@@ -27,11 +27,12 @@ require_once 'Zodeken/ZfTool/Exception.php';
 
 /**
  * Zodeken provider for Zend Tool
- * 
+ *
  * @package Zodeken
  * @author Thuan Nguyen <me@ndthuan.com>
  * @copyright Copyright(c) 2011 Thuan Nguyen <me@ndthuan.com>
  * @license http://www.gnu.org/licenses/lgpl-3.0.txt
+ * @version $Id$
  */
 class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstract
 {
@@ -193,11 +194,11 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         if (!$mode) {
             $mode = 4;
         }
-        
+
         echo "Your package name ($this->_packageName):";
-        
+
         $packageName = trim(fgets(STDIN));
-        
+
         if (!empty($packageName)) {
             $this->_packageName = $packageName;
         }
