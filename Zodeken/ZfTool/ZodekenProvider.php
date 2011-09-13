@@ -1110,6 +1110,8 @@ CODE;
                 $dependentTables[] = array($dependentTable['TABLE_NAME'], $dependentTable['COLUMN_NAME']);
             }
 
+            $foreignKeyInPrimaryKeyCount = 0;
+
             // get referenced tables
             foreach ($this->_db->fetchAll("
                 SELECT COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
@@ -1119,6 +1121,10 @@ CODE;
                     AND REFERENCED_COLUMN_NAME IS NOT NULL
                 ") as $referenceTable)
             {
+                if (in_array($referenceTable['COLUMN_NAME'], $primaryKey)) {
+                    $foreignKeyInPrimaryKeyCount++;
+                }
+
                 $references[$referenceTable['COLUMN_NAME']] = array(
                     'columns' => $referenceTable['COLUMN_NAME'],
                     'refTableClass' => $this->_getDbTableClassName($referenceTable['REFERENCED_TABLE_NAME']),
@@ -1141,7 +1147,7 @@ CODE;
                 'referenceMap' => $references,
                 // if the primary key consists of 2 columns at least, mark
                 // this as a map table
-                'isMap' => isset($primaryKey[1]),
+                'isMap' => $foreignKeyInPrimaryKeyCount > 1,
                 'hasMany' => array(),
             );
         }
@@ -1169,8 +1175,8 @@ CODE;
                 }
             }
 
-            $tables[$inRelationships[0][0]]['hasMany'][$inRelationships[0][1]] = array($inRelationships[1][0],$inRelationships[1][1], $table['name']);
-            $tables[$inRelationships[1][0]]['hasMany'][$inRelationships[1][1]] = array($inRelationships[0][0],$inRelationships[0][1], $table['name']);
+            $tables[$inRelationships[0][0]]['hasMany'][$inRelationships[0][1]] = array($inRelationships[1][0], $inRelationships[1][1], $table['name']);
+            $tables[$inRelationships[1][0]]['hasMany'][$inRelationships[1][1]] = array($inRelationships[0][0], $inRelationships[0][1], $table['name']);
         }
 
         $this->_tables = $tables;
@@ -1188,6 +1194,7 @@ CODE;
         //$ini = preg_replace('#"([A-Z_]{2,})#s', '\1 "', $ini);
 
         $ini = str_replace('"APPLICATION_PATH/', 'APPLICATION_PATH "/', $ini);
+        // "0" -> 0, "1" => 1...
         $ini = preg_replace('#= "(\d+)"#si', '= \1', $ini);
 
         file_put_contents($iniFilename, $ini);
