@@ -271,7 +271,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         // we need to remove the double quotes...
         $this->_preserveIniConfigs($configFilePath);
 
-        echo 'Configs have been written to application.ini';
+        echo 'Configs have been written to application.ini', PHP_EOL;
         // end of modifying configs
 
         $this->_analyzeTableDefinitions();
@@ -440,7 +440,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                 $addedCode = '$table' . $baseClass . ' = new ' . $referenceTableClass . '();';
                 $fieldConfigs[] = "->setLabel('$field[label]')";
                 $fieldConfigs[] = '->setMultiOptions(array("" => "- - Select - -") + $table' . $baseClass . '->fetchPairs())';
-                $fieldConfigs[] = '->setRequired(true)';
+
+                if ($field['is_required']) {
+                    $fieldConfigs[] = '->setRequired(true)';
+                }
             } else {
                 $fieldConfigs[] = "->setLabel('$field[label]')";
 
