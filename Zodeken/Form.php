@@ -24,12 +24,12 @@ class Zodeken_Form extends Zend_Form
     );
     public $elementDecorators = array(
         'ViewHelper',
-        'Description',
+        array('Description', array('tag' => 'div')),
         'Errors',
-        array(array('elementDiv' => 'HtmlTag'), array('tag' => 'div', 'class' => 'element')),
-        array(array('td' => 'HtmlTag'), array('tag' => 'td')),
+        array(array('td' => 'HtmlTag'), array('tag' => 'td', 'class' => 'element')),
         array('Label', array('tag' => 'td')),
-        array(array('row' => 'HtmlTag'), array('tag' => 'tr')),
+        array(array('td' => 'HtmlTag'), array('tag' => 'td')),
+        array('HtmlTag', array('tag' => 'tr')),
     );
     public $imageDecorators = array(
         'ViewHelper',

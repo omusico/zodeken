@@ -60,6 +60,12 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      *
      * @var string
      */
+    protected $_formBaseClass = 'Zodeken_Form';
+
+    /**
+     *
+     * @var string
+     */
     protected $_cwd;
 
     /**
@@ -140,9 +146,20 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $currentWorkingDirectory = getcwd();
 
         // replace the slash just to print a beautiful message :D
-        $configFilePath = str_replace(
-            '/', DIRECTORY_SEPARATOR, $currentWorkingDirectory
-            . '/application/configs/application.ini');
+        $configDir = str_replace(
+            '/', DIRECTORY_SEPARATOR, $currentWorkingDirectory . '/application/configs/');
+
+        $configFilePath = $configDir . 'application.ini';
+
+        $backupName = 'application-bak';
+        $backupCount = 1;
+
+        // create a backup
+        while (file_exists($configDir . $backupName . "-$backupCount.ini"))
+        {
+            ++$backupCount;
+        }
+        copy($configFilePath, $configDir . $backupName . "-$backupCount.ini");
 
         if (!file_exists($configFilePath)) {
 
@@ -153,7 +170,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         $this->_cwd = $currentWorkingDirectory;
 
-        $configs = new Zend_Config_Ini($configFilePath);
+        $configs = new Zend_Config_Ini($configFilePath, null, array(
+                'skipExtends' => true,
+                'allowModifications' => true
+            ));
 
         // find db configs in development section
         $dbConfig = $configs->development->resources->db;
@@ -183,25 +203,76 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $this->_packageName = $this->_getCamelCase($this->_dbName);
         $this->_db = Zend_Db::factory($dbConfig);
 
+        // modify the config file
+        if (!$configs->zodeken) {
+            $configs->zodeken = array();
+        }
+
+        // get package name from config
+        if ($configs->zodeken->packageName) {
+            $this->_packageName = $configs->zodeken->packageName;
+        }
+
+        // get form base class from config
+        if ($configs->zodeken->formBaseClass) {
+            $this->_formBaseClass = $configs->zodeken->formBaseClass;
+        }
+
         $eol = PHP_EOL;
 
-        echo "Which component do you want to generate?{$eol}{$eol}1. DbTables{$eol}2. Mappers{$eol}3. Forms{$eol}4. All{$eol}{$eol}";
+        $question = "Which component do you want to generate?{$eol}{$eol}"
+            . "1. DbTables{$eol}2. Mappers{$eol}3. Forms{$eol}4. All{$eol}{$eol}";
 
-        echo "Your choice (4): ";
+        $question .= "Your choice (4): ";
 
-        $mode = (int) trim(fgets(STDIN));
+        $mode = (int) $this->_readInput($question);
 
         if (!$mode) {
             $mode = 4;
         }
 
-        echo "Your package name ($this->_packageName):";
-
-        $packageName = trim(fgets(STDIN));
+        $packageName = $this->_readInput("Your package name ($this->_packageName): ");
+        $formBaseClass = $this->_readInput("Form's parent class ($this->_formBaseClass): ");
 
         if (!empty($packageName)) {
             $this->_packageName = $packageName;
         }
+
+        if (!empty($formBaseClass)) {
+            $this->_formBaseClass = $formBaseClass;
+        }
+
+        // auto-add "Zodeken_" to the autoloadernamespaces directive
+        $autoloaderNamespaces = $configs->production->autoloadernamespaces;
+
+        if (!$autoloaderNamespaces) {
+            $autoloaderNamespaces = array('Zodeken_');
+        } else {
+            $autoloaderNamespaces = $autoloaderNamespaces->toArray();
+
+            if (false === array_search('Zodeken_', $autoloaderNamespaces)) {
+                $autoloaderNamespaces[] = 'Zodeken_';
+            }
+        }
+
+        // modify configs
+        $configs->zodeken->packageName = $this->_packageName;
+        $configs->zodeken->formBaseClass = $this->_formBaseClass;
+        $configs->production->autoloadernamespaces = $autoloaderNamespaces;
+
+        $configWriter = new Zend_Config_Writer_Ini(array(
+                'config' => $configs,
+                'filename' => $configFilePath
+            ));
+
+        $configWriter->write();
+
+        // some constants like APPLICATION_PATH is replaced with "APPLICATION_PATH"
+        // we need to remove the double quotes...
+        $this->_preserveIniConfigs($configFilePath);
+
+        echo 'Configs have been written to application.ini';
+        // end of modifying configs
 
         $this->_analyzeTableDefinitions();
 
@@ -210,23 +281,25 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         foreach ($this->_tables as $tableName => $tableDefinition)
         {
+            $tableBaseClassName = $tableDefinition['baseClassName'];
+
             if (1 === $mode || 4 === $mode) {
                 $tableCode = $this->_getDbTableCode($tableDefinition);
                 $rowCode = $this->_getRowCode($tableDefinition);
                 $rowsetCode = $this->_getRowsetCode($tableDefinition);
 
-                $this->_createFile("$modelsDir/DbTable", $tableDefinition['baseClassName'] . '.php', $tableCode, true);
-                $this->_createFile("$modelsDir/DbTable/Row", $tableDefinition['baseClassName'] . '.php', $rowCode, true);
-                $this->_createFile("$modelsDir/DbTable/Rowset", $tableDefinition['baseClassName'] . '.php', $rowsetCode, true);
+                $this->_createFile("$modelsDir/DbTable", $tableBaseClassName . '.php', $tableCode, true);
+                $this->_createFile("$modelsDir/DbTable/Row", $tableBaseClassName . '.php', $rowCode, true);
+                $this->_createFile("$modelsDir/DbTable/Rowset", $tableBaseClassName . '.php', $rowsetCode, true);
             }
 
             if (!$tableDefinition['isMap']) {
                 if ((2 === $mode || 4 === $mode)) {
-                    $this->_createFile($modelsDir, $tableDefinition['baseClassName'] . 'Mapper.php', $this->_getMapperCode($tableDefinition), false);
+                    $this->_createFile($modelsDir, $tableBaseClassName . 'Mapper.php', $this->_getMapperCode($tableDefinition), false);
                 }
 
                 if ((3 === $mode || 4 === $mode)) {
-                    $this->_createFile($formsDir, $tableDefinition['baseClassName'] . '.php', $this->_getFormCode($tableDefinition), false);
+                    $this->_createFile($formsDir, $tableBaseClassName . '.php', $this->_getFormCode($tableDefinition), false);
                 }
             }
         }
@@ -421,6 +494,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                         $fieldType = 'text';
                         $filters[] = 'new Zend_Filter_StringTrim()';
                         $fieldConfigs[] = '->setAttrib("size", 50)';
+                        $fieldConfigs[] = '->setAttrib("maxlength", ' . $field['type_arguments'] . ')';
                         break;
                     case 'bit':
                     case 'date':
@@ -452,10 +526,12 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                 $fieldConfigs[] = '->addFilter(' . $filter . ')';
             }
 
-            if ($fieldType === 'hidden') {
-                $fieldConfigs[] = '->setDecorators($this->hiddenDecorators)';
-            } else {
-                $fieldConfigs[] = '->setDecorators($this->elementDecorators)';
+            if ('Zodeken_Form' === $this->_formBaseClass) {
+                if ($fieldType === 'hidden') {
+                    $fieldConfigs[] = '->setDecorators($this->hiddenDecorators)';
+                } else {
+                    $fieldConfigs[] = '->setDecorators($this->elementDecorators)';
+                }
             }
 
             $fieldConfigs = implode("\n                ", $fieldConfigs);
@@ -474,11 +550,17 @@ ELEMENT;
             $fields[] = $fieldCode;
         }
 
+        $buttonDecorators = '';
+
+        if ('Zodeken_Form' === $this->_formBaseClass) {
+            $buttonDecorators = '
+                ->setDecorators($this->buttonDecorators)';
+        }
+
         $fields[] = <<<CODE
         \$this->addElement(
             \$this->createElement('button', 'Submit')
-                ->setAttrib('type', 'submit')
-                ->setDecorators(\$this->buttonDecorators)
+                ->setAttrib('type', 'submit')$buttonDecorators
         );
 CODE;
 
@@ -495,7 +577,7 @@ CODE;
  * @version \$Id\$
  *
  */
-class $tableDefinition[formClassName] extends Zodeken_Form
+class $tableDefinition[formClassName] extends $this->_formBaseClass
 {
     public function init()
     {
@@ -564,6 +646,7 @@ CODE;
     {
         $properties = array();
         $functions = array();
+        $functionNames = array();
 
         foreach ($tableDefinition['fields'] as $field)
         {
@@ -574,10 +657,19 @@ CODE;
             $properties[] = " * @property $type \$$field[name]";
         }
 
-        foreach ($tableDefinition['referenceMap'] as $parentTable => $reference)
+        foreach ($tableDefinition['referenceMap'] as $column => $reference)
         {
+            $parentTable = $reference['table'];
             $parentDefinition = $this->_tables[$parentTable];
             $parentTable = $this->_getCamelCase($parentTable);
+
+            $functionName = "get{$parentTable}RowBy" . $this->_getCamelCase($column);
+
+            if (isset($functionNames[$functionName])) {
+                continue;
+            } else {
+                $functionNames[$functionName] = 0;
+            }
 
             $functions[] = <<<FUNCTION
     /**
@@ -585,52 +677,73 @@ CODE;
      *
      * @return $parentDefinition[rowClassName]
      */
-    public function get{$parentTable}Row()
+    public function $functionName()
     {
-        return \$this->findParentRow('$parentDefinition[className]');
+        return \$this->findParentRow('$parentDefinition[className]', '$column');
     }
 FUNCTION;
         }
 
-        foreach ($tableDefinition['hasMany'] as $hasManyTable => $mapTable)
+        foreach ($tableDefinition['hasMany'] as $hasManyKey => $mapTable)
         {
-            $hasManyDefinition = $this->_tables[$hasManyTable];
-            $hasManyTable = $this->_getCamelCase($hasManyTable);
-            $mapDefinition = $this->_tables[$mapTable];
+            $hasManyKey = $this->_getCamelCase($hasManyKey);
+
+            $mapTableName = $mapTable[0];
+            $mapTableColumn = $mapTable[1];
+
+            $hasManyDefinition = $this->_tables[$hasManyKey];
+            $mapDefinition = $this->_tables[$mapTableName];
+
+            $functionName = "get{$mapTableName}RowsetBy" . $this->_getCamelCase($mapTableColumn);
+
+            if (isset($functionNames[$functionName])) {
+                continue;
+            } else {
+                $functionNames[$functionName] = 0;
+            }
 
             $functions[] = <<<FUNCTION
     /**
-     * Get a list of rows of $hasManyTable.
+     * Get a list of rows of $hasManyKey.
      *
      * @return $hasManyDefinition[rowsetClassName] which contains a list of $hasManyDefinition[rowClassName] instances
      */
-    public function get{$hasManyTable}Rows()
+    public function $functionName()
     {
-        return \$this->findManyToManyRowset('$hasManyDefinition[className]', '$mapDefinition[className]');
+        return \$this->findManyToManyRowset('$hasManyDefinition[className]', '$mapDefinition[className]', '$mapTableColumn');
     }
 FUNCTION;
         }
 
         foreach ($tableDefinition['dependentTables'] as $childTable)
         {
-            $childDefinition = $this->_tables[$childTable];
+            $childTableName = $childTable[0];
+            $childDefinition = $this->_tables[$childTableName];
 
             // no need to get rows of map table
             if ($childDefinition['isMap']) {
                 continue;
             }
 
-            $childTable = $this->_getCamelCase($childTable);
+            $childTableName = $this->_getCamelCase($childTableName);
+
+            $functionName = "get{$childTableName}RowsBy" . $this->_getCamelCase($childTable[1]);
+
+            if (isset($functionNames[$functionName])) {
+                continue;
+            } else {
+                $functionNames[$functionName] = 0;
+            }
 
             $functions[] = <<<FUNCTION
     /**
-     * Get a list of rows of $childTable.
+     * Get a list of rows of $childTableName.
      *
-     * @return array a list of $childDefinition[rowClassName]
+     * @return $childDefinition[rowsetClassName] a list of $childDefinition[rowClassName]
      */
-    public function get{$childTable}Rows()
+    public function $functionName()
     {
-        return \$this->findDependentRowset('$childDefinition[className]');
+        return \$this->findDependentRowset('$childDefinition[className]', '$childTable[1]');
     }
 FUNCTION;
         }
@@ -700,19 +813,17 @@ CODE;
 
         foreach ($tableDefinition['dependentTables'] as $table)
         {
-            $dependentTables[] = $this->_getDbTableClassName($table);
+            $dependentTables[] = $this->_getDbTableClassName($table[0]);
         }
 
         $primaryKey = "array('" . implode("','", $tableDefinition['primaryKey']) . "')";
-        $dependentTables = "array('" . implode("','", $dependentTables) . "')";
+        $dependentTables = var_export(array_unique($dependentTables), true); //"array('" . implode("','", $dependentTables) . "')";
         $referencedMap = array();
 
-        foreach ($tableDefinition['referenceMap'] as $referenceTableName => $reference)
+        foreach ($tableDefinition['referenceMap'] as $column => $reference)
         {
-            $referenceTableName = $this->_getCamelCase($referenceTableName);
-
             $referencedMap[] = <<<CODE
-        '$referenceTableName' => array(
+        '$column' => array(
             'columns' => '$reference[columns]',
             'refTableClass' => '$reference[refTableClass]',
             'refColumns' => '$reference[refColumns]'
@@ -774,6 +885,26 @@ class $tableDefinition[className] extends Zend_Db_Table_Abstract
      * @var string
      */
     protected \$_rowsetClass = '$tableDefinition[rowsetClassName]';
+
+    /**
+     * Get the table name
+     *
+     * @return string
+     */
+    public function getName()
+    {
+        return \$this->_name;
+    }
+
+    /**
+     * Get the table's schema
+     *
+     * @return string
+     */
+    public function getSchema()
+    {
+        return \$this->_schema;
+    }
 
     /**
      * Used to fetch a rowset and build an associative array from it.
@@ -934,7 +1065,7 @@ CODE;
 
             echo "\tAnalyzing table: $tableName\n";
             // loop through the field list
-            foreach ($this->_db->fetchAll("SHOW FIELDS FROM $tableName") as $fieldRow)
+            foreach ($this->_db->fetchAll("SHOW FIELDS FROM `$tableName`") as $fieldRow)
             {
                 /* @var $fieldRow Zend_Db_Table_Row_Abstract */
 
@@ -971,12 +1102,12 @@ CODE;
             echo "\t\tGet table relationships\n";
             // get dependent tables
             foreach ($this->_db->fetchAll("
-                SELECT TABLE_SCHEMA, TABLE_NAME
+                SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME
                 FROM information_schema.key_column_usage
                 WHERE REFERENCED_TABLE_SCHEMA = '$this->_dbName'
                     AND REFERENCED_TABLE_NAME = '$tableName'") as $dependentTable)
             {
-                $dependentTables[] = $dependentTable['TABLE_NAME'];
+                $dependentTables[] = array($dependentTable['TABLE_NAME'], $dependentTable['COLUMN_NAME']);
             }
 
             // get referenced tables
@@ -988,10 +1119,11 @@ CODE;
                     AND REFERENCED_COLUMN_NAME IS NOT NULL
                 ") as $referenceTable)
             {
-                $references[$referenceTable['REFERENCED_TABLE_NAME']] = array(
+                $references[$referenceTable['COLUMN_NAME']] = array(
                     'columns' => $referenceTable['COLUMN_NAME'],
                     'refTableClass' => $this->_getDbTableClassName($referenceTable['REFERENCED_TABLE_NAME']),
                     'refColumns' => $referenceTable['REFERENCED_COLUMN_NAME'],
+                    'table' => $referenceTable['REFERENCED_TABLE_NAME']
                 );
             }
 
@@ -1026,31 +1158,61 @@ CODE;
 
             // loop through the references, get the referenced table that has
             // a field linking to the mapped table's primary key
-            foreach ($table['referenceMap'] as $referenceTableName => $reference)
+            foreach ($table['referenceMap'] as $column => $reference)
             {
-                if (in_array($reference['refColumns'], $primaryKey)) {
+                if (in_array($column, $primaryKey)) {
 
-                    $manyToManyTables[] = $referenceTableName;
+                    $manyToManyTables[] = array($reference['table'], $column);
                 }
-            }
-
-            foreach ($manyToManyTables as $tableName1)
-            {
-                $hasManyClasses = array();
-
-                foreach ($manyToManyTables as $tableName2)
-                {
-                    if ($tableName1 !== $tableName2) {
-
-                        $hasManyClasses[$tableName2] = $table['name'];
-                    }
-                }
-
-                $tables[$tableName1]['hasMany'] = $hasManyClasses;
             }
         }
 
+        foreach ($manyToManyTables as $table1)
+        {
+            $hasManyClasses = array();
+
+            foreach ($manyToManyTables as $table2)
+            {
+                if ($table1[0] !== $table2[0]) {
+
+                    $hasManyClasses["$table2[0].$table2[1]"] = array($table1[0], $table1[1]);
+                }
+            }
+
+            $tables[$table1[0]]['hasMany'] = $hasManyClasses;
+        }
+
         $this->_tables = $tables;
+    }
+
+    /**
+     * Preserve some special constants in application.ini file
+     *
+     * @param string $iniFilename
+     */
+    protected function _preserveIniConfigs($iniFilename)
+    {
+        $ini = file_get_contents($iniFilename);
+
+        //$ini = preg_replace('#"([A-Z_]{2,})#s', '\1 "', $ini);
+
+        $ini = str_replace('"APPLICATION_PATH/', 'APPLICATION_PATH "/', $ini);
+        $ini = preg_replace('#= "(\d+)"#si', '= \1', $ini);
+
+        file_put_contents($iniFilename, $ini);
+    }
+
+    /**
+     * Show the question and retrieve answer from user
+     *
+     * @param string $question
+     * @return string
+     */
+    protected function _readInput($question)
+    {
+        echo $question;
+
+        return trim(fgets(STDIN));
     }
 
 }
