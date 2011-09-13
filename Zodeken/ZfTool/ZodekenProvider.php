@@ -151,15 +151,15 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         $configFilePath = $configDir . 'application.ini';
 
-        $backupName = 'application-bak';
+        $backupName = 'application.ini';
         $backupCount = 1;
 
         // create a backup
-        while (file_exists($configDir . $backupName . "-$backupCount.ini"))
+        while (file_exists($configDir . "$backupName.$backupCount"))
         {
             ++$backupCount;
         }
-        copy($configFilePath, $configDir . $backupName . "-$backupCount.ini");
+        copy($configFilePath, $configDir . "$backupName.$backupCount");
 
         if (!file_exists($configFilePath)) {
 
@@ -684,17 +684,17 @@ CODE;
 FUNCTION;
         }
 
-        foreach ($tableDefinition['hasMany'] as $hasManyKey => $mapTable)
+        foreach ($tableDefinition['hasMany'] as $hasManyTable)
         {
-            $hasManyKey = $this->_getCamelCase($hasManyKey);
+            $hasManyTableName = $hasManyTable[0];
+            $hasManyTableColumn = $hasManyTable[1];
+            $mapTableName = $hasManyTable[2];
 
-            $mapTableName = $mapTable[0];
-            $mapTableColumn = $mapTable[1];
-
-            $hasManyDefinition = $this->_tables[$hasManyKey];
+            $hasManyDefinition = $this->_tables[$hasManyTableName];
             $mapDefinition = $this->_tables[$mapTableName];
 
-            $functionName = "get{$mapTableName}RowsetBy" . $this->_getCamelCase($mapTableColumn);
+            $hasManyTableName = $this->_getCamelCase($hasManyTableName);
+            $functionName = "get{$hasManyTableName}Rowset";
 
             if (isset($functionNames[$functionName])) {
                 continue;
@@ -704,13 +704,13 @@ FUNCTION;
 
             $functions[] = <<<FUNCTION
     /**
-     * Get a list of rows of $hasManyKey.
+     * Get a list of rows of $hasManyTableName.
      *
-     * @return $hasManyDefinition[rowsetClassName] which contains a list of $hasManyDefinition[rowClassName] instances
+     * @return $hasManyDefinition[rowsetClassName]
      */
     public function $functionName()
     {
-        return \$this->findManyToManyRowset('$hasManyDefinition[className]', '$mapDefinition[className]', '$mapTableColumn');
+        return \$this->findManyToManyRowset('$hasManyDefinition[className]', '$mapDefinition[className]', '$hasManyTableColumn');
     }
 FUNCTION;
         }
@@ -739,7 +739,7 @@ FUNCTION;
     /**
      * Get a list of rows of $childTableName.
      *
-     * @return $childDefinition[rowsetClassName] a list of $childDefinition[rowClassName]
+     * @return $childDefinition[rowsetClassName]
      */
     public function $functionName()
     {
@@ -817,7 +817,7 @@ CODE;
         }
 
         $primaryKey = "array('" . implode("','", $tableDefinition['primaryKey']) . "')";
-        $dependentTables = var_export(array_unique($dependentTables), true); //"array('" . implode("','", $dependentTables) . "')";
+        $dependentTables = "array('" . implode("','", $dependentTables) . "')";
         $referencedMap = array();
 
         foreach ($tableDefinition['referenceMap'] as $column => $reference)
@@ -1146,40 +1146,31 @@ CODE;
             );
         }
 
-        // contains the list of tables that have many of each other
-        $manyToManyTables = array();
-
         // loop again to repair the many-to-many relationships
         foreach ($tables as $tableName => $table)
         {
+            // we just find many-to-many from a map table, so if table is not a
+            // map, we'll skip it
             if (!$table['isMap']) {
                 continue;
             }
+
+            $inRelationships = array();
 
             // loop through the references, get the referenced table that has
             // a field linking to the mapped table's primary key
             foreach ($table['referenceMap'] as $column => $reference)
             {
-                if (in_array($column, $primaryKey)) {
-
-                    $manyToManyTables[] = array($reference['table'], $column);
-                }
-            }
-        }
-
-        foreach ($manyToManyTables as $table1)
-        {
-            $hasManyClasses = array();
-
-            foreach ($manyToManyTables as $table2)
-            {
-                if ($table1[0] !== $table2[0]) {
-
-                    $hasManyClasses["$table2[0].$table2[1]"] = array($table1[0], $table1[1]);
+                // if the column of this table is one of the composite key,
+                // we consider its refereced table as a table that has a
+                // many-to-many relationship with another table
+                if (in_array($column, $table['primaryKey'])) {
+                    $inRelationships[] = array($reference['table'], $column);
                 }
             }
 
-            $tables[$table1[0]]['hasMany'] = $hasManyClasses;
+            $tables[$inRelationships[0][0]]['hasMany'][$inRelationships[0][1]] = array($inRelationships[1][0],$inRelationships[1][1], $table['name']);
+            $tables[$inRelationships[1][0]]['hasMany'][$inRelationships[1][1]] = array($inRelationships[0][0],$inRelationships[0][1], $table['name']);
         }
 
         $this->_tables = $tables;
