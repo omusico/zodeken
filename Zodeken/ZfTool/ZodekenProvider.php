@@ -464,8 +464,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                             $option = str_replace("'", "\'", $option);
                             $assocOptions[] = "'$option' => '" . ucfirst($option) . "'";
                         }
+                        $array = 'array(' . implode(',', $assocOptions) . ')';
                         $fieldType = 'radio';
-                        $fieldConfigs[] = '->setMultiOptions(array(' . implode(',', $assocOptions) . '))';
+                        $fieldConfigs[] = '->setMultiOptions($array)';
+                        $validators[] = "new Zend_Validate_InArray(array('haystack' => $array))";
                         break;
                     case 'tinytext':
                     case 'mediumtext':
@@ -498,6 +500,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                         $filters[] = 'new Zend_Filter_StringTrim()';
                         $fieldConfigs[] = '->setAttrib("size", 50)';
                         $fieldConfigs[] = '->setAttrib("maxlength", ' . $field['type_arguments'] . ')';
+
+                        if ('email' === strtolower($field['name']) || 'emailaddress' === strtolower($field['name'])) {
+                            $validators[] = 'new Zend_Validate_EmailAddress()';
+                        }
                         break;
                     case 'bit':
                     case 'date':
@@ -855,11 +861,6 @@ CODE;
 class $tableDefinition[className] extends Zend_Db_Table_Abstract
 {
     /**
-     * @var array
-     */
-    protected \$_schema = '$this->_dbName';
-
-    /**
      * @var string
      */
     protected \$_name = '$tableDefinition[name]';
@@ -897,16 +898,6 @@ class $tableDefinition[className] extends Zend_Db_Table_Abstract
     public function getName()
     {
         return \$this->_name;
-    }
-
-    /**
-     * Get the table's schema
-     *
-     * @return string
-     */
-    public function getSchema()
-    {
-        return \$this->_schema;
     }
 
     /**
