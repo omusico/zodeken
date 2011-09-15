@@ -170,10 +170,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         $this->_cwd = $currentWorkingDirectory;
 
-        $configs = new Zend_Config_Ini($configFilePath, null, array(
-                'skipExtends' => true,
-                'allowModifications' => true
-            ));
+        // used to get db configs
+        $configs = new Zend_Config_Ini($configFilePath);
 
         // find db configs in development section
         $dbConfig = $configs->development->resources->db;
@@ -189,9 +187,15 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
             );
         }
 
+        // used to modify the file
+        $writableConfigs = new Zend_Config_Ini($configFilePath, null, array(
+                'skipExtends' => true,
+                'allowModifications' => true
+            ));
+
         // get the app namespace
-        if ($configs->production->appnamespace) {
-            $this->_appnamespace = $configs->production->appnamespace;
+        if ($writableConfigs->production->appnamespace) {
+            $this->_appnamespace = $writableConfigs->production->appnamespace;
 
             if ($this->_appnamespace[strlen($this->_appnamespace) - 1] !== '_') {
 
@@ -204,18 +208,18 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $this->_db = Zend_Db::factory($dbConfig);
 
         // modify the config file
-        if (!$configs->zodeken) {
-            $configs->zodeken = array();
+        if (!$writableConfigs->zodeken) {
+            $writableConfigs->zodeken = array();
         }
 
         // get package name from config
-        if ($configs->zodeken->packageName) {
-            $this->_packageName = $configs->zodeken->packageName;
+        if ($writableConfigs->zodeken->packageName) {
+            $this->_packageName = $writableConfigs->zodeken->packageName;
         }
 
         // get form base class from config
-        if ($configs->zodeken->formBaseClass) {
-            $this->_formBaseClass = $configs->zodeken->formBaseClass;
+        if ($writableConfigs->zodeken->formBaseClass) {
+            $this->_formBaseClass = $writableConfigs->zodeken->formBaseClass;
         }
 
         $eol = PHP_EOL;
@@ -243,7 +247,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         }
 
         // auto-add "Zodeken_" to the autoloadernamespaces directive
-        $autoloaderNamespaces = $configs->production->autoloadernamespaces;
+        $autoloaderNamespaces = $writableConfigs->production->autoloadernamespaces;
 
         if (!$autoloaderNamespaces) {
             $autoloaderNamespaces = array('Zodeken_');
@@ -256,12 +260,12 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         }
 
         // modify configs
-        $configs->zodeken->packageName = $this->_packageName;
-        $configs->zodeken->formBaseClass = $this->_formBaseClass;
-        $configs->production->autoloadernamespaces = $autoloaderNamespaces;
+        $writableConfigs->zodeken->packageName = $this->_packageName;
+        $writableConfigs->zodeken->formBaseClass = $this->_formBaseClass;
+        $writableConfigs->production->autoloadernamespaces = $autoloaderNamespaces;
 
         $configWriter = new Zend_Config_Writer_Ini(array(
-                'config' => $configs,
+                'config' => $writableConfigs,
                 'filename' => $configFilePath
             ));
 
@@ -468,6 +472,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                         $fieldType = 'radio';
                         $fieldConfigs[] = '->setMultiOptions($array)';
                         $validators[] = "new Zend_Validate_InArray(array('haystack' => $array))";
+                        $fieldConfigs[] = '->setSeparator(" ")';
                         break;
                     case 'tinytext':
                     case 'mediumtext':
@@ -568,7 +573,8 @@ ELEMENT;
 
         $fields[] = <<<CODE
         \$this->addElement(
-            \$this->createElement('button', 'Submit')
+            \$this->createElement('button', 'submit')
+                ->setLabel('Submit')
                 ->setAttrib('type', 'submit')$buttonDecorators
         );
 CODE;
