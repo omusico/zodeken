@@ -1,103 +1,116 @@
-***ABILITIES***
+*** FEATURES ***
 
 - Supports only MySQL.
 
 - Generates DbTables, DbTable_Rows, DbTable_Rowsets with DocBlock tags that
 gives you autocompletion when coding in an IDE.
 
-    http://img703.imageshack.us/img703/4783/screenshotzodekenautoco.png
+- Defines DbTable's $_dependentTables and $_referenceMap following InnoDB's
+relationships.
 
-- Defines DbTable relationships following InnoDB's relationships.
+- Adds some commonly used methods to DbTable: fetchPairs (an array of
+key => value pairs), fetchOne (value of first column's first field), fetchOnes
+(an array that is a list of fetchOne).
 
-    /**
-     * @var array
-     */
-    protected $_primary = array('id');
+- You are free to add custom methods to DbTable, Row, Rowset, Form or Mapper.
+Basic methods like fetchOne(), fetchPairs(), fetchOnes(), setters, getters...
+are added to abstract classes of them. Those abstract class files will be
+overwritten when you re-run the generator.
 
-    /**
-     * @var array
-     */
-    protected $_dependentTables = array('Application_Model_DbTable_PostsTags');
+With forms, latest Zodeken-generated classes will be put in
+(Application_)Form_Edit[TableName]_Latest, you can compare this with current
+version (Application_)Form_Edit[TableName] to add or change the code as
+necessary to it.
 
-    /**
-     * @var array
-     */
-    protected $_referenceMap = array(        
-        'Category' => array(
-            'columns' => 'category_id',
-            'refTableClass' => 'Application_Model_DbTable_Category',
-            'refColumns' => 'id'
-        ),
-
-        'Member' => array(
-            'columns' => 'owner_id',
-            'refTableClass' => 'Application_Model_DbTable_Member',
-            'refColumns' => 'id'
-        )
-    );
-
-- Adds some commonly used methods to DbTable: fetchPairs (an array of 
-key => value pairs), fetchOne (value of first column's first field), fetchOnes 
-(an array that is a list of fetchOne)
-    
 - Detects the relationships between the tables and generates basically necessary
 methods.
 
-    One-to-many: $memberRow->getPostRows(), $postRow->getMemberRow()
-    Many-to-many: $tagRow->getPostRows(), $postRow->getTagRows()
-    
-- Uses proper form element for each data type. For example: enum/set -> radio,
-varchar/char... -> text, text/longtext... -> textarea, foreign key -> select...
+    One-to-many:
+        $memberRow->getPostRowsetByAuthorId()
+        $postRow->getMemberRowByAuthorId()
 
-- Adds validators and filters depending on data type of the field.
+    Many-to-many:
+        $tagRow->getPostRows()
+        $postRow->getTagRows()
+
+- Uses proper form element for each data type. For example:
+    enum/set -> radio
+    varchar/char -> text
+    text/longtext -> textarea
+    foreign key -> select
+    ...
+
+- Adds validators and filters depending on data type of the field. For example:
+
+    InArray for ENUM/SET
+    Int for INT
+    Float for BIGINT/DECIMAL/FLOAT
+    ->setRequired(true) for 'NOT NULL' fields
+    StringLength(array('max' => 100)) for fields that have 100 char. limit
 
 - Adds a drop-down list for a foreign key field to the form:
 
-    $tableCategory = new Application_Model_DbTable_Category();
+    $tableCategory = new Application_Model_Category_DbTable();
     $this->addElement(
         $this->createElement('select', 'category_id')
             ->setLabel('Category Id')
-            ->setMultiOptions(array("" => "- - Select - -") 
+            ->setMultiOptions(array("" => "- - Select - -")
                 + $tableCategory->fetchPairs())
             ->setRequired(true)
             ->setDecorators($this->elementDecorators)
     );
 
-***INSTALLATION***
+*** INSTALLATION ***
 
-1. Place the folder Zodeken into a folder that covered by your include_path
-setting. Or simply, just place Zodeken into the same folder with your Zend 
+1. Download latest version from http://code.google.com/p/zodeken/downloads/list
+
+2. Place the folder Zodeken into a folder that covered by your include_path
+setting. Or simply, just place Zodeken into the same folder with your Zend
 library, for example:
 
     /usr/share/php/
         Zend/
         Zodeken/
-        
-2. Edit your .zf.ini (usually located at your home folder), append this line:
+
+3. Edit your .zf.ini (usually located at your home folder), append this line:
 
     basicloader.classes.20 = "Zodeken_ZfTool_ZodekenProvider"
-    
+
 You may change the number 20 to another one that you prefer.
 
-3. Done
+If don't know where that file is located, you may run:
 
-***USAGE***
+    zf --setup config-file
 
-1. "chdir" to the project folder created by Zend tool
+The command 'zf' not found??? Read this first:
+http://framework.zend.com/manual/en/zend.tool.framework.clitool.html
 
-    $ zf create project zfproject
-    $ cd zfproject
-    
-2. Configure database settings in the application.ini file
-
-3. Run the command
-
-    $ zf generate zodeken
-    
 4. Done
 
-***IMPORTANT NOTES***
+*** USAGE ***
 
-Do not change anything in the DbTables, DbTable_Rowsets and DbTable_Rows, they 
-will be overwritten every time you re-generate them. Instead, you can write your 
-custom Model methods in Mapper files.
+1. Create the project using zf command line tool
+
+    zf create project zfproject
+
+2. "chdir" to the created project folder
+
+    cd zfproject
+
+3. Configure database settings in the application.ini file
+
+    zf configure db-adapter [...]
+
+4. Run the command
+
+    zf generate zodeken
+
+5. Done
+
+*** TEST ***
+
+1. Create a database
+
+2. Import ZodekenTest.sql
+
+3. Do steps as in "USAGE" section

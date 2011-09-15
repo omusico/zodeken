@@ -117,13 +117,20 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected $_appnamespace = 'Application_';
 
-    protected function _createFile($baseDir, $fileName, $code, $allowOverride = false)
+    /**
+     *
+     * @param string $filePath
+     * @param string $code
+     * @param bool $allowOverride
+     * @return integer -1 = existing, 1 = created, 0 = other
+     */
+    protected function _createFile($filePath, $code, $allowOverride = false)
     {
+        $baseDir = pathinfo($filePath, PATHINFO_DIRNAME);
+
         if (!file_exists($baseDir)) {
             mkdir($baseDir, 0777, true);
         }
-
-        $filePath = $baseDir . '/' . $fileName;
 
         if (!$allowOverride && file_exists($filePath)) {
             echo "\033[31mExisting\033[37m: $filePath\n";
@@ -291,19 +298,27 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                 $tableCode = $this->_getDbTableCode($tableDefinition);
                 $rowCode = $this->_getRowCode($tableDefinition);
                 $rowsetCode = $this->_getRowsetCode($tableDefinition);
+                $tableAbstractCode = $this->_getDbTableAbstractCode($tableDefinition);
+                $rowAbstractCode = $this->_getRowAbstractCode($tableDefinition);
+                $rowsetAbstractCode = $this->_getRowsetAbstractCode($tableDefinition);
 
-                $this->_createFile("$modelsDir/DbTable", $tableBaseClassName . '.php', $tableCode, true);
-                $this->_createFile("$modelsDir/DbTable/Row", $tableBaseClassName . '.php', $rowCode, true);
-                $this->_createFile("$modelsDir/DbTable/Rowset", $tableBaseClassName . '.php', $rowsetCode, true);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['classNameAbstract']) . '.php', $tableAbstractCode, true);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowClassNameAbstract']) . '.php', $rowAbstractCode, true);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowsetClassNameAbstract']) . '.php', $rowsetAbstractCode, true);
+
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['className']) . '.php', $tableCode, false);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowClassName']) . '.php', $rowCode, false);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowsetClassName']) . '.php', $rowsetCode, false);
             }
 
             if (!$tableDefinition['isMap']) {
                 if ((2 === $mode || 4 === $mode)) {
-                    $this->_createFile($modelsDir, $tableBaseClassName . 'Mapper.php', $this->_getMapperCode($tableDefinition), false);
+                    $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['mapperClassName']) . '.php', $this->_getMapperCode($tableDefinition), false);
                 }
 
                 if ((3 === $mode || 4 === $mode)) {
-                    $this->_createFile($formsDir, $tableBaseClassName . '.php', $this->_getFormCode($tableDefinition), false);
+                    $this->_createFile($formsDir . '/' . str_replace(array($this->_appnamespace . 'Form_', '_'), array('', '/'), $tableDefinition['formClassName']) . '.php', $this->_getFormCode($tableDefinition), false);
+                    $this->_createFile($formsDir . '/' . str_replace(array($this->_appnamespace . 'Form_', '_'), array('', '/'), $tableDefinition['formClassNameLatest']) . '.php', $this->_getFormCode($tableDefinition, true), true);
                 }
             }
         }
@@ -319,8 +334,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected function _getDbTableClassName($tableName)
     {
-        return $this->_appnamespace . 'Model_DbTable_'
-            . $this->_getCamelCase($tableName);
+        return $this->_appnamespace . 'Model_'
+            . $this->_getCamelCase($tableName) . '_DbTable';
     }
 
     /**
@@ -333,8 +348,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected function _getRowClassName($tableName)
     {
-        return $this->_appnamespace . 'Model_DbTable_Row_'
-            . $this->_getCamelCase($tableName);
+        return $this->_appnamespace . 'Model_'
+            . $this->_getCamelCase($tableName) . '_Row';
     }
 
     /**
@@ -347,8 +362,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected function _getRowsetClassName($tableName)
     {
-        return $this->_appnamespace . 'Model_DbTable_Rowset_'
-            . $this->_getCamelCase($tableName);
+        return $this->_appnamespace . 'Model_'
+            . $this->_getCamelCase($tableName) . '_Rowset';
     }
 
     /**
@@ -363,6 +378,18 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
     }
 
     /**
+     * Convert a table name to a form class name ('latest' version).
+     *
+     * @param string $tableName
+     * @return string
+     */
+    protected function _getFormLatestClassName($tableName)
+    {
+        return $this->_appnamespace . 'Form_Edit'
+            . $this->_getCamelCase($tableName) . '_Latest';
+    }
+
+    /**
      * Convert a table name to a form class name.
      *
      * @param string $tableName
@@ -370,7 +397,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected function _getFormClassName($tableName)
     {
-        return $this->_appnamespace . 'Form_' . $this->_getCamelCase($tableName);
+        return $this->_appnamespace . 'Form_Edit' . $this->_getCamelCase($tableName);
     }
 
     /**
@@ -416,7 +443,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      * @param array $tableDefinition
      * @return string
      */
-    protected function _getFormCode($tableDefinition)
+    protected function _getFormCode($tableDefinition, $isNew = false)
     {
         $fields = array();
 
@@ -434,20 +461,27 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                 if ($field['name'] === $reference['columns']) {
                     $fieldType = 'select';
                     $referenceTableClass = $reference['refTableClass'];
-                    $baseClass = $this->_getCamelCase($referenceTable);
+                    $baseClass = $this->_getCamelCase($reference['table']);
                 }
             }
 
             if ($field['is_primary_key']) {
                 $fieldType = 'hidden';
+
+                $fieldsConfigs[] = '->setAttrib("class", "hidden-input")';
+
             } elseif ($referenceTableClass) {
+
                 $addedCode = '$table' . $baseClass . ' = new ' . $referenceTableClass . '();';
+
                 $fieldConfigs[] = "->setLabel('$field[label]')";
                 $fieldConfigs[] = '->setMultiOptions(array("" => "- - Select - -") + $table' . $baseClass . '->fetchPairs())';
 
                 if ($field['is_required']) {
                     $fieldConfigs[] = '->setRequired(true)';
                 }
+
+                $fieldsConfigs[] = '->setAttrib("class", "element-input")';
             } else {
                 $fieldConfigs[] = "->setLabel('$field[label]')";
 
@@ -480,12 +514,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                     case 'longtext':
                         $fieldType = 'textarea';
                         $filters[] = 'new Zend_Filter_StringTrim()';
-                        $fieldConfigs[] = '->setAttribs(array("cols" => 60, "rows" => 10))';
                         break;
                     case 'tinyint':
                     case 'mediumint':
                     case 'int':
-                    case 'bigint':
                     case 'year':
                         $fieldType = 'text';
                         $filters[] = 'new Zend_Filter_StringTrim()';
@@ -494,6 +526,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                     case 'decimal':
                     case 'float':
                     case 'double':
+                    case 'bigint':
                         $fieldType = 'text';
                         $filters[] = 'new Zend_Filter_StringTrim()';
                         $validators[] = 'new Zend_Validate_Float()';
@@ -503,7 +536,6 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                         $validators[] = 'new Zend_Validate_StringLength(array("max" => ' . $field['type_arguments'] . '))';
                         $fieldType = 'text';
                         $filters[] = 'new Zend_Filter_StringTrim()';
-                        $fieldConfigs[] = '->setAttrib("size", 50)';
                         $fieldConfigs[] = '->setAttrib("maxlength", ' . $field['type_arguments'] . ')';
 
                         if ('email' === strtolower($field['name']) || 'emailaddress' === strtolower($field['name'])) {
@@ -524,6 +556,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                 if ($field['is_required']) {
                     $fieldConfigs[] = '->setRequired(true)';
                 }
+
+                $fieldsConfigs[] = '->setAttrib("class", "element-input")';
             }
 
             if ($field['default_value']) {
@@ -581,22 +615,35 @@ CODE;
 
         $fields = implode("\n\n", $fields);
 
+        $className = $isNew ? $tableDefinition['formClassNameLatest'] : $tableDefinition['formClassName'];
+
+        $addedComments = '';
+
+        if ($isNew) {
+            $addedComments = "
+ *
+ * This is your latest code that generated by Zodeken. Use this to compare with
+ * your current version to see changes.
+ *
+ * Do NOT write anything in this file, it will be removed when you regenerated.";
+        }
         return <<<CODE
 <?php
 
 /**
- * Form definition for table $tableDefinition[name].
+ * Form definition for table $tableDefinition[name].$addedComments
  *
  * @package $this->_packageName
  * @author Zodeken
  * @version \$Id\$
  *
  */
-class $tableDefinition[formClassName] extends $this->_formBaseClass
+class $className extends $this->_formBaseClass
 {
     public function init()
     {
-        \$this->setMethod('post');
+        \$this->setMethod('post')
+            ->setAttrib('class', '$this->_formBaseClass');
 
 $fields
 
@@ -651,13 +698,34 @@ class $tableDefinition[mapperClassName]
 CODE;
     }
 
+    protected function _getRowCode($tableDefinition)
+    {
+        return <<<CODE
+<?php
+
+/**
+ * Row definition class for table $tableDefinition[name].
+ *
+ * @package $this->_packageName
+ * @author Zodeken
+ * @version \$Id\$
+ *
+ */
+class $tableDefinition[rowClassName] extends $tableDefinition[rowClassNameAbstract]
+{
+    // write your custom functions here
+}
+
+CODE;
+    }
+
     /**
      * Create row class for a table.
      *
      * @param array $tableDefinition
      * @return string
      */
-    protected function _getRowCode($tableDefinition)
+    protected function _getRowAbstractCode($tableDefinition)
     {
         $properties = array();
         $functions = array();
@@ -668,8 +736,33 @@ CODE;
             $type = strtolower($field['type']);
 
             $type = isset($this->_mysqlToPhpTypesMap[$type]) ? $this->_mysqlToPhpTypesMap[$type] : 'mixed';
+            $fieldNameCamel = $this->_getCamelCase($field['name']);
 
             $properties[] = " * @property $type \$$field[name]";
+            $functions[] = <<<FUNCTION
+    /**
+     * Set value for '$field[name]' field
+     *
+     * @param $type \$valueOf$fieldNameCamel
+     *
+     * @return $tableDefinition[rowClassName]
+     */
+    public function set$fieldNameCamel(\$valueOf$fieldNameCamel)
+    {
+        \$this->$field[name] = \$valueOf$fieldNameCamel;
+        return \$this;
+    }
+
+    /**
+     * Get value of '$field[name]' field
+     *
+     * @return $type
+     */
+    public function get$fieldNameCamel()
+    {
+        return \$this->$field[name];
+    }
+FUNCTION;
         }
 
         foreach ($tableDefinition['referenceMap'] as $column => $reference)
@@ -772,13 +865,15 @@ FUNCTION;
 /**
  * Row definition class for table $tableDefinition[name].
  *
+ * Do NOT write anything in this file, it will be removed when you regenerated.
+ *
  * @package $this->_packageName
  * @author Zodeken
  * @version \$Id\$
  *
 $properties
  */
-class $tableDefinition[rowClassName] extends Zend_Db_Table_Row_Abstract
+abstract class $tableDefinition[rowClassNameAbstract] extends Zend_Db_Table_Row_Abstract
 {
 $functions
 }
@@ -798,6 +893,29 @@ CODE;
  * @author Zodeken
  * @version \$Id\$
  *
+ */
+class $tableDefinition[rowsetClassName] extends $tableDefinition[rowsetClassNameAbstract]
+{
+    // write your custom functions here
+}
+
+CODE;
+    }
+
+    protected function _getRowsetAbstractCode($tableDefinition)
+    {
+        return <<<CODE
+<?php
+
+/**
+ * Rowset definition class for table $tableDefinition[name].
+ *
+ * Do NOT write anything in this file, it will be removed when you regenerated.
+ *
+ * @package $this->_packageName
+ * @author Zodeken
+ * @version \$Id\$
+ *
  * @method $tableDefinition[rowClassName] current()
  * @method $tableDefinition[rowClassName] getRow(int \$position, bool \$seek = false)
  * @method $tableDefinition[className] getTable()
@@ -807,10 +925,29 @@ CODE;
  * @method bool setTable($tableDefinition[className] \$table)
  *
  */
-class $tableDefinition[rowsetClassName] extends Zend_Db_Table_Rowset_Abstract
+abstract class $tableDefinition[rowsetClassNameAbstract] extends Zend_Db_Table_Rowset_Abstract
 {
 }
 
+CODE;
+    }
+
+    protected function _getDbTableCode($tableDefinition)
+    {
+        return <<<CODE
+<?php
+
+/**
+ * Definition class for table $tableName.
+ *
+ * @package $this->_packageName
+ * @author Zodeken
+ * @version \$Id\$
+ */
+class $tableDefinition[className] extends $tableDefinition[classNameAbstract]
+{
+    // write your custom functions here
+}
 CODE;
     }
 
@@ -820,7 +957,7 @@ CODE;
      * @param string $tableDefinition
      * @return string
      */
-    protected function _getDbTableCode($tableDefinition)
+    protected function _getDbTableAbstractCode($tableDefinition)
     {
         $tableName = $tableDefinition['name'];
 
@@ -854,6 +991,8 @@ CODE;
 /**
  * Definition class for table $tableName.
  *
+ * Do NOT write anything in this file, it will be removed when you regenerated.
+ *
  * @package $this->_packageName
  * @author Zodeken
  * @version \$Id\$
@@ -864,7 +1003,7 @@ CODE;
  * @method $tableDefinition[rowsetClassName] find()
  *
  */
-class $tableDefinition[className] extends Zend_Db_Table_Abstract
+abstract class $tableDefinition[classNameAbstract] extends Zend_Db_Table_Abstract
 {
     /**
      * @var string
@@ -1136,11 +1275,15 @@ CODE;
             $tables[$tableName] = array(
                 'name' => $tableName,
                 'className' => $this->_getDbTableClassName($tableName),
+                'classNameAbstract' => $this->_getDbTableClassName($tableName) . '_Abstract',
                 'baseClassName' => $this->_getCamelCase($tableName),
                 'rowClassName' => $this->_getRowClassName($tableName),
+                'rowClassNameAbstract' => $this->_getRowClassName($tableName) . '_Abstract',
                 'rowsetClassName' => $this->_getRowsetClassName($tableName),
+                'rowsetClassNameAbstract' => $this->_getRowsetClassName($tableName) . '_Abstract',
                 'mapperClassName' => $this->_getMapperClassName($tableName),
                 'formClassName' => $this->_getFormClassName($tableName),
+                'formClassNameLatest' => $this->_getFormLatestClassName($tableName),
                 'primaryKey' => $primaryKey,
                 'fields' => $fields,
                 'dependentTables' => $dependentTables,
