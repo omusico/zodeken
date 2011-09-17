@@ -1,0 +1,11 @@
+1.1.5 (Sep 17, 2011)
+    - Fixed a bug that always set the foreign key column to required
+    - Removed schema from DbTable
+    - Added InArray validator to ENUM/SET elements
+    - Added EmailAddress validator to elements that named 'email' or 'emailaddress'
+    - Added "setSeparator()" to ENUM/SET elements
+    - Added setters and getters to Row
+    - Splitted basic methods to abstract classes, let normal classes to be added custom methods
+    - Added className "element-input" to form elements
+    - Remove "size" attribute form text elements and "rows", "cols" from textareas
+    - Rewrote README
