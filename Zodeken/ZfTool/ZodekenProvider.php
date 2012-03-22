@@ -938,7 +938,7 @@ CODE;
 <?php
 
 /**
- * Definition class for table $tableName.
+ * Definition class for table $tableDefinition[name].
  *
  * @package $this->_packageName
  * @author Zodeken
@@ -967,8 +967,14 @@ CODE;
         {
             $dependentTables[] = $this->_getDbTableClassName($table[0]);
         }
+        
+        $pkCode = '';
+        
+        if (!empty($tableDefinition['primaryKey'])) {
+            $pkCode = "'" . implode("','", $tableDefinition['primaryKey']) . "'";
+        }
 
-        $primaryKey = "array('" . implode("','", $tableDefinition['primaryKey']) . "')";
+        $primaryKey = "array($pkCode)";
         $dependentTables = "array('" . implode("','", $dependentTables) . "')";
         $referencedMap = array();
 
