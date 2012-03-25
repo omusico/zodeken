@@ -2,17 +2,17 @@
 
 - Supports only MySQL.
 
-- Generates DbTables, DbTable_Rows, DbTable_Rowsets with DocBlock tags that
-gives you autocompletion when coding in an IDE.
+- Generates Controllers with CRUD actions, Db_Tables, DbTable_Rows, DbTable_Rowsets 
+with DocBlock tags that gives you autocompletion when coding in an IDE.
 
-- Defines DbTable's $_dependentTables and $_referenceMap following InnoDB's
+- Defines Db_Table's $_dependentTables and $_referenceMap following InnoDB's
 relationships.
 
-- Adds some commonly used methods to DbTable: fetchPairs (an array of
+- Adds some commonly used methods to Db_Table: fetchPairs (an array of
 key => value pairs), fetchOne (value of first column's first field), fetchOnes
 (an array that is a list of fetchOne).
 
-- You are free to add custom methods to DbTable, Row, Rowset, Form or Mapper.
+- You are free to add custom methods to Db_Table, Row, Rowset, Form or Mapper.
 Basic methods like fetchOne(), fetchPairs(), fetchOnes(), setters, getters...
 are added to abstract classes of them. Those abstract class files will be
 overwritten when you re-run the generator.
@@ -81,6 +81,10 @@ You may change the number 20 to another one that you prefer.
 If don't know where that file is located, you may run:
 
     zf --setup config-file
+
+or
+
+    zf create config
 
 The command 'zf' not found??? Read this first:
 http://framework.zend.com/manual/en/zend.tool.framework.clitool.html

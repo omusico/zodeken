@@ -1,5 +1,8 @@
 <?php
 
+// PHP < 5.3 compatibility
+!defined('__DIR__') || define('__DIR__', dirname(__FILE__));
+
 require_once 'Zodeken/ZfTool/Exception.php';
 
 /**
@@ -36,6 +39,10 @@ require_once 'Zodeken/ZfTool/Exception.php';
  */
 class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstract
 {
+    const GENERATE_DB_TABLES = 1;
+    const GENERATE_MAPPERS = 2;
+    const GENERATE_FORMS = 4;
+    const GENERATE_CRUD = 8;
 
     /**
      *
@@ -60,13 +67,21 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      *
      * @var string
      */
-    protected $_formBaseClass = 'Zodeken_Form';
+    protected $_formBaseClass = 'Zend_Form';
 
     /**
-     *
+     * Current working directory
+     * 
      * @var string
      */
     protected $_cwd;
+    
+    /**
+     * Zodeken directory
+     * 
+     * @var string
+     */
+    protected $_zodekenDir = __DIR__;
 
     /**
      * The shared table definitions that would be set by _analyzeTableDefinitions()
@@ -140,6 +155,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         if (@file_put_contents($filePath, $code)) {
             echo "\033[32mCreating\033[37m: $filePath\n";
             return 1;
+        } else {
+            echo "\033[31mFAILED creating\033[37m: $filePath\n";
         }
 
         return 0;
@@ -148,9 +165,11 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
     /**
      * The public method that would be exposed into ZF tool
      */
-    public function generate()
+    public function generate($force = 0)
     {
         $currentWorkingDirectory = getcwd();
+        
+        $forceOverriding = $force ? true : false;
 
         // replace the slash just to print a beautiful message :D
         $configDir = str_replace(
@@ -232,18 +251,23 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $eol = PHP_EOL;
 
         $question = "Which component do you want to generate?{$eol}{$eol}"
-            . "1. DbTables{$eol}2. Mappers{$eol}3. Forms{$eol}4. All{$eol}{$eol}";
+            . "1. Db_Tables{$eol}2. Mappers{$eol}4. Forms{$eol}8. CRUD{$eol}{$eol}";
 
-        $question .= "Your choice (4): ";
+        $question .= "Your choice (15): ";
 
         $mode = (int) $this->_readInput($question);
 
         if (!$mode) {
-            $mode = 4;
+            $mode = 15;
         }
 
         $packageName = $this->_readInput("Your package name ($this->_packageName): ");
-        $formBaseClass = $this->_readInput("Form's parent class ($this->_formBaseClass): ");
+        
+        if (self::GENERATE_FORMS & $mode) {
+            $formBaseClass = $this->_readInput("Form's parent class ($this->_formBaseClass): ");
+        } else {
+            $formBaseClass = null;
+        }
 
         if (!empty($packageName)) {
             $this->_packageName = $packageName;
@@ -289,12 +313,14 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         $modelsDir = $currentWorkingDirectory . '/application/models';
         $formsDir = $currentWorkingDirectory . '/application/forms';
+        $controllersDir = $currentWorkingDirectory . '/application/controllers';
+        $viewsDir = $currentWorkingDirectory . '/application/views/scripts';
 
         foreach ($this->_tables as $tableName => $tableDefinition)
         {
             $tableBaseClassName = $tableDefinition['baseClassName'];
 
-            if (1 === $mode || 4 === $mode) {
+            if (self::GENERATE_DB_TABLES & $mode) {
                 $tableCode = $this->_getDbTableCode($tableDefinition);
                 $rowCode = $this->_getRowCode($tableDefinition);
                 $rowsetCode = $this->_getRowsetCode($tableDefinition);
@@ -306,19 +332,27 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                 $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowClassNameAbstract']) . '.php', $rowAbstractCode, true);
                 $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowsetClassNameAbstract']) . '.php', $rowsetAbstractCode, true);
 
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['className']) . '.php', $tableCode, false);
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowClassName']) . '.php', $rowCode, false);
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowsetClassName']) . '.php', $rowsetCode, false);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['className']) . '.php', $tableCode, $forceOverriding ? true : false);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowClassName']) . '.php', $rowCode, $forceOverriding ? true : false);
+                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowsetClassName']) . '.php', $rowsetCode, $forceOverriding ? true : false);
             }
 
             if (!$tableDefinition['isMap']) {
-                if ((2 === $mode || 4 === $mode)) {
-                    $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['mapperClassName']) . '.php', $this->_getMapperCode($tableDefinition), false);
+                if (self::GENERATE_MAPPERS & $mode) {
+                    $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['mapperClassName']) . '.php', $this->_getMapperCode($tableDefinition), $forceOverriding ? true : false);
                 }
 
-                if ((3 === $mode || 4 === $mode)) {
-                    $this->_createFile($formsDir . '/' . str_replace(array($this->_appnamespace . 'Form_', '_'), array('', '/'), $tableDefinition['formClassName']) . '.php', $this->_getFormCode($tableDefinition), false);
+                if (self::GENERATE_FORMS & $mode) {
+                    $this->_createFile($formsDir . '/' . str_replace(array($this->_appnamespace . 'Form_', '_'), array('', '/'), $tableDefinition['formClassName']) . '.php', $this->_getFormCode($tableDefinition), $forceOverriding ? true : false);
                     $this->_createFile($formsDir . '/' . str_replace(array($this->_appnamespace . 'Form_', '_'), array('', '/'), $tableDefinition['formClassNameLatest']) . '.php', $this->_getFormCode($tableDefinition, true), true);
+                }
+
+                if (self::GENERATE_CRUD & $mode) {
+                    $this->_createFile($controllersDir . '/' . $tableBaseClassName . 'Controller.php', $this->_getControllerCode($tableDefinition), $forceOverriding ? true : false);
+                    $this->_createFile($viewsDir . '/' . $tableDefinition['controllerName'] . '/create.phtml', $this->_getCreateViewCode($tableDefinition), $forceOverriding ? true : false);
+                    $this->_createFile($viewsDir . '/' . $tableDefinition['controllerName'] . '/update.phtml', $this->_getUpdateViewCode($tableDefinition), $forceOverriding ? true : false);
+                    $this->_createFile($viewsDir . '/' . $tableDefinition['controllerName'] . '/index.phtml', $this->_getIndexViewCode($tableDefinition), $forceOverriding ? true : false);
+                    $this->_createFile($viewsDir . '/pagination_control.phtml', $this->_getPaginationViewCode($tableDefinition), $forceOverriding ? true : false);
                 }
             }
         }
@@ -438,6 +472,61 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
     }
 
     /**
+     * Generate controller code
+     *
+     * @param array $tableDefinition
+     * @return string
+     */
+    protected function _getControllerCode($tableDefinition)
+    {
+        return require $this->_zodekenDir . '/templates/controller.php';
+    }
+
+    /**
+     * Generate create view code
+     *
+     * @param array $tableDefinition
+     * @return string
+     */
+    protected function _getIndexViewCode($tableDefinition)
+    {
+        return require $this->_zodekenDir . '/templates/view-index.php';
+    }
+
+    /**
+     * Generate create view code
+     *
+     * @param array $tableDefinition
+     * @return string
+     */
+    protected function _getCreateViewCode($tableDefinition)
+    {
+        return require $this->_zodekenDir . '/templates/view-create.php';
+    }
+
+    /**
+     * Generate update view code
+     *
+     * @param array $tableDefinition
+     * @return string
+     */
+    protected function _getUpdateViewCode($tableDefinition)
+    {
+        return require $this->_zodekenDir . '/templates/view-update.php';
+    }
+
+    /**
+     * Generate update view code
+     *
+     * @param array $tableDefinition
+     * @return string
+     */
+    protected function _getPaginationViewCode($tableDefinition)
+    {
+        return require $this->_zodekenDir . '/templates/view-pagination.php';
+    }
+
+    /**
      * Generate form code
      *
      * @param array $tableDefinition
@@ -445,212 +534,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected function _getFormCode($tableDefinition, $isNew = false)
     {
-        $fields = array();
-
-        foreach ($tableDefinition['fields'] as $field)
-        {
-            $addedCode = null;
-            $fieldType = null;
-            $referenceTableClass = null;
-            $fieldConfigs = array();
-            $validators = array();
-            $filters = array();
-
-            foreach ($tableDefinition['referenceMap'] as $referenceTable => $reference)
-            {
-                if ($field['name'] === $reference['columns']) {
-                    $fieldType = 'select';
-                    $referenceTableClass = $reference['refTableClass'];
-                    $baseClass = $this->_getCamelCase($reference['table']);
-                }
-            }
-
-            if ($field['is_primary_key']) {
-                $fieldType = 'hidden';
-
-                $fieldsConfigs[] = '->setAttrib("class", "hidden-input")';
-
-            } elseif ($referenceTableClass) {
-
-                $addedCode = '$table' . $baseClass . ' = new ' . $referenceTableClass . '();';
-
-                $fieldConfigs[] = "->setLabel('$field[label]')";
-                $fieldConfigs[] = '->setMultiOptions(array("" => "- - Select - -") + $table' . $baseClass . '->fetchPairs())';
-
-                if ($field['is_required']) {
-                    $fieldConfigs[] = '->setRequired(true)';
-                }
-
-                $fieldsConfigs[] = '->setAttrib("class", "element-input")';
-            } else {
-                $fieldConfigs[] = "->setLabel('$field[label]')";
-
-                // base on the type and type arguments, add corresponding validators and filters
-                switch ($field['type'])
-                {
-                    case 'set':
-                    case 'enum':
-                        /**
-                         * For example, ENUM('Male', 'Female') would be converted to
-                         *
-                         * ->setMultiOptions(array("Male" => "Male", "Female" => "Female"))
-                         */
-                        $numericOptions = eval("return array($field[type_arguments]);");
-                        $assocOptions = array();
-                        foreach ($numericOptions as $option)
-                        {
-                            $option = str_replace("'", "\'", $option);
-                            $assocOptions[] = "'$option' => '" . ucfirst($option) . "'";
-                        }
-                        $array = 'array(' . implode(',', $assocOptions) . ')';
-                        $fieldType = 'radio';
-                        $fieldConfigs[] = '->setMultiOptions($array)';
-                        $validators[] = "new Zend_Validate_InArray(array('haystack' => $array))";
-                        $fieldConfigs[] = '->setSeparator(" ")';
-                        break;
-                    case 'tinytext':
-                    case 'mediumtext':
-                    case 'text':
-                    case 'longtext':
-                        $fieldType = 'textarea';
-                        $filters[] = 'new Zend_Filter_StringTrim()';
-                        break;
-                    case 'tinyint':
-                    case 'mediumint':
-                    case 'int':
-                    case 'year':
-                        $fieldType = 'text';
-                        $filters[] = 'new Zend_Filter_StringTrim()';
-                        $validators[] = 'new Zend_Validate_Int()';
-                        break;
-                    case 'decimal':
-                    case 'float':
-                    case 'double':
-                    case 'bigint':
-                        $fieldType = 'text';
-                        $filters[] = 'new Zend_Filter_StringTrim()';
-                        $validators[] = 'new Zend_Validate_Float()';
-                        break;
-                    case 'varchar':
-                    case 'char':
-                        $validators[] = 'new Zend_Validate_StringLength(array("max" => ' . $field['type_arguments'] . '))';
-                        $fieldType = 'text';
-                        $filters[] = 'new Zend_Filter_StringTrim()';
-                        $fieldConfigs[] = '->setAttrib("maxlength", ' . $field['type_arguments'] . ')';
-
-                        if ('email' === strtolower($field['name']) || 'emailaddress' === strtolower($field['name'])) {
-                            $validators[] = 'new Zend_Validate_EmailAddress()';
-                        }
-                        break;
-                    case 'bit':
-                    case 'date':
-                    case 'datetime':
-                    case 'time':
-                    case 'timestamp':
-                    default:
-                        $fieldType = 'text';
-                        $filters[] = 'new Zend_Filter_StringTrim()';
-                        break;
-                }
-
-                if ($field['is_required']) {
-                    $fieldConfigs[] = '->setRequired(true)';
-                }
-
-                $fieldsConfigs[] = '->setAttrib("class", "element-input")';
-            }
-
-            if ($field['default_value']) {
-                $fieldConfigs[] = '->setValue("' . str_replace('"', '\"', $field['default_value']) . '")';
-            }
-
-            foreach ($validators as $validator)
-            {
-                $fieldConfigs[] = '->addValidator(' . $validator . ')';
-            }
-
-            foreach ($filters as $filter)
-            {
-                $fieldConfigs[] = '->addFilter(' . $filter . ')';
-            }
-
-            if ('Zodeken_Form' === $this->_formBaseClass) {
-                if ($fieldType === 'hidden') {
-                    $fieldConfigs[] = '->setDecorators($this->hiddenDecorators)';
-                } else {
-                    $fieldConfigs[] = '->setDecorators($this->elementDecorators)';
-                }
-            }
-
-            $fieldConfigs = implode("\n                ", $fieldConfigs);
-
-            $fieldCode = <<<ELEMENT
-        \$this->addElement(
-            \$this->createElement('$fieldType', '{$field['name']}')
-                $fieldConfigs
-        );
-ELEMENT;
-
-            if ($addedCode) {
-                $fieldCode = '        ' . $addedCode . "\n" . $fieldCode;
-            }
-
-            $fields[] = $fieldCode;
-        }
-
-        $buttonDecorators = '';
-
-        if ('Zodeken_Form' === $this->_formBaseClass) {
-            $buttonDecorators = '
-                ->setDecorators($this->buttonDecorators)';
-        }
-
-        $fields[] = <<<CODE
-        \$this->addElement(
-            \$this->createElement('button', 'submit')
-                ->setLabel('Submit')
-                ->setAttrib('type', 'submit')$buttonDecorators
-        );
-CODE;
-
-        $fields = implode("\n\n", $fields);
-
-        $className = $isNew ? $tableDefinition['formClassNameLatest'] : $tableDefinition['formClassName'];
-
-        $addedComments = '';
-
-        if ($isNew) {
-            $addedComments = "
- *
- * This is your latest code that generated by Zodeken. Use this to compare with
- * your current version to see changes.
- *
- * Do NOT write anything in this file, it will be removed when you regenerated.";
-        }
-        return <<<CODE
-<?php
-
-/**
- * Form definition for table $tableDefinition[name].$addedComments
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- *
- */
-class $className extends $this->_formBaseClass
-{
-    public function init()
-    {
-        \$this->setMethod('post')
-            ->setAttrib('class', '$this->_formBaseClass');
-
-$fields
-
-        parent::init();
-    }
-}
-CODE;
+        return require $this->_zodekenDir . '/templates/form.php';
     }
 
     /**
@@ -661,62 +545,12 @@ CODE;
      */
     protected function _getMapperCode($tableDefinition)
     {
-        return <<<CODE
-<?php
-
-/**
- * Data mapper class for table $tableDefinition[name].
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- *
- */
-class $tableDefinition[mapperClassName]
-{
-    /**
-     *
-     * @var $tableDefinition[className]
-     */
-    protected \$_dbTable;
-
-    public function __construct()
-    {
-        \$this->_dbTable = new $tableDefinition[className]();
-    }
-
-    /**
-     *
-     * @return $tableDefinition[className]
-     */
-    public function getDbTabe()
-    {
-        return \$this->_dbTable;
-    }
-}
-
-CODE;
+        return require $this->_zodekenDir . '/templates/mapper.php';
     }
 
     protected function _getRowCode($tableDefinition)
     {
-        return <<<CODE
-<?php
-
-/**
- * Row definition class for table $tableDefinition[name].
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- *
- */
-class $tableDefinition[rowClassName] extends $tableDefinition[rowClassNameAbstract]
-{
-    // write your custom functions here
-}
-
-CODE;
+        return require $this->_zodekenDir . '/templates/row.php';
     }
 
     /**
@@ -727,228 +561,22 @@ CODE;
      */
     protected function _getRowAbstractCode($tableDefinition)
     {
-        $properties = array();
-        $functions = array();
-        $functionNames = array();
-
-        foreach ($tableDefinition['fields'] as $field)
-        {
-            $type = strtolower($field['type']);
-
-            $type = isset($this->_mysqlToPhpTypesMap[$type]) ? $this->_mysqlToPhpTypesMap[$type] : 'mixed';
-            $fieldNameCamel = $this->_getCamelCase($field['name']);
-
-            $properties[] = " * @property $type \$$field[name]";
-            $functions[] = <<<FUNCTION
-    /**
-     * Set value for '$field[name]' field
-     *
-     * @param $type \$valueOf$fieldNameCamel
-     *
-     * @return $tableDefinition[rowClassName]
-     */
-    public function set$fieldNameCamel(\$valueOf$fieldNameCamel)
-    {
-        \$this->$field[name] = \$valueOf$fieldNameCamel;
-        return \$this;
-    }
-
-    /**
-     * Get value of '$field[name]' field
-     *
-     * @return $type
-     */
-    public function get$fieldNameCamel()
-    {
-        return \$this->$field[name];
-    }
-FUNCTION;
-        }
-
-        foreach ($tableDefinition['referenceMap'] as $column => $reference)
-        {
-            $parentTable = $reference['table'];
-            $parentDefinition = $this->_tables[$parentTable];
-            $parentTable = $this->_getCamelCase($parentTable);
-
-            $functionName = "get{$parentTable}RowBy" . $this->_getCamelCase($column);
-
-            if (isset($functionNames[$functionName])) {
-                continue;
-            } else {
-                $functionNames[$functionName] = 0;
-            }
-
-            $functions[] = <<<FUNCTION
-    /**
-     * Get a row of $parentTable.
-     *
-     * @return $parentDefinition[rowClassName]
-     */
-    public function $functionName()
-    {
-        return \$this->findParentRow('$parentDefinition[className]', '$column');
-    }
-FUNCTION;
-        }
-
-        foreach ($tableDefinition['hasMany'] as $hasManyTable)
-        {
-            $hasManyTableName = $hasManyTable[0];
-            $hasManyTableColumn = $hasManyTable[1];
-            $mapTableName = $hasManyTable[2];
-
-            $hasManyDefinition = $this->_tables[$hasManyTableName];
-            $mapDefinition = $this->_tables[$mapTableName];
-
-            $hasManyTableName = $this->_getCamelCase($hasManyTableName);
-            $functionName = "get{$hasManyTableName}Rowset";
-
-            if (isset($functionNames[$functionName])) {
-                continue;
-            } else {
-                $functionNames[$functionName] = 0;
-            }
-
-            $functions[] = <<<FUNCTION
-    /**
-     * Get a list of rows of $hasManyTableName.
-     *
-     * @return $hasManyDefinition[rowsetClassName]
-     */
-    public function $functionName()
-    {
-        return \$this->findManyToManyRowset('$hasManyDefinition[className]', '$mapDefinition[className]', '$hasManyTableColumn');
-    }
-FUNCTION;
-        }
-
-        foreach ($tableDefinition['dependentTables'] as $childTable)
-        {
-            $childTableName = $childTable[0];
-            $childDefinition = $this->_tables[$childTableName];
-
-            // no need to get rows of map table
-            if ($childDefinition['isMap']) {
-                continue;
-            }
-
-            $childTableName = $this->_getCamelCase($childTableName);
-
-            $functionName = "get{$childTableName}RowsBy" . $this->_getCamelCase($childTable[1]);
-
-            if (isset($functionNames[$functionName])) {
-                continue;
-            } else {
-                $functionNames[$functionName] = 0;
-            }
-
-            $functions[] = <<<FUNCTION
-    /**
-     * Get a list of rows of $childTableName.
-     *
-     * @return $childDefinition[rowsetClassName]
-     */
-    public function $functionName()
-    {
-        return \$this->findDependentRowset('$childDefinition[className]', '$childTable[1]');
-    }
-FUNCTION;
-        }
-
-        $properties = implode("\n", $properties);
-        $functions = implode("\n\n", $functions);
-
-        return <<<CODE
-<?php
-
-/**
- * Row definition class for table $tableDefinition[name].
- *
- * Do NOT write anything in this file, it will be removed when you regenerated.
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- *
-$properties
- */
-abstract class $tableDefinition[rowClassNameAbstract] extends Zend_Db_Table_Row_Abstract
-{
-$functions
-}
-
-CODE;
+        return require $this->_zodekenDir . '/templates/row-abstract.php';
     }
 
     protected function _getRowsetCode($tableDefinition)
     {
-        return <<<CODE
-<?php
-
-/**
- * Rowset definition class for table $tableDefinition[name].
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- *
- */
-class $tableDefinition[rowsetClassName] extends $tableDefinition[rowsetClassNameAbstract]
-{
-    // write your custom functions here
-}
-
-CODE;
+        return require $this->_zodekenDir . '/templates/rowset.php';
     }
 
     protected function _getRowsetAbstractCode($tableDefinition)
     {
-        return <<<CODE
-<?php
-
-/**
- * Rowset definition class for table $tableDefinition[name].
- *
- * Do NOT write anything in this file, it will be removed when you regenerated.
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- *
- * @method $tableDefinition[rowClassName] current()
- * @method $tableDefinition[rowClassName] getRow(int \$position, bool \$seek = false)
- * @method $tableDefinition[className] getTable()
- * @method $tableDefinition[rowClassName] offsetGet(string \$offset)
- * @method $tableDefinition[rowsetClassName] rewind()
- * @method $tableDefinition[rowsetClassName] seek(int \$position)
- * @method bool setTable($tableDefinition[className] \$table)
- *
- */
-abstract class $tableDefinition[rowsetClassNameAbstract] extends Zend_Db_Table_Rowset_Abstract
-{
-}
-
-CODE;
+        return require $this->_zodekenDir . '/templates/rowset-abstract.php';
     }
 
     protected function _getDbTableCode($tableDefinition)
     {
-        return <<<CODE
-<?php
-
-/**
- * Definition class for table $tableDefinition[name].
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- */
-class $tableDefinition[className] extends $tableDefinition[classNameAbstract]
-{
-    // write your custom functions here
-}
-CODE;
+        return require $this->_zodekenDir . '/templates/table.php';
     }
 
     /**
@@ -959,233 +587,7 @@ CODE;
      */
     protected function _getDbTableAbstractCode($tableDefinition)
     {
-        $tableName = $tableDefinition['name'];
-
-        $dependentTables = array();
-
-        foreach ($tableDefinition['dependentTables'] as $table)
-        {
-            $dependentTables[] = $this->_getDbTableClassName($table[0]);
-        }
-        
-        $pkCode = '';
-        
-        if (!empty($tableDefinition['primaryKey'])) {
-            $pkCode = "'" . implode("','", $tableDefinition['primaryKey']) . "'";
-        }
-
-        $primaryKey = "array($pkCode)";
-        $dependentTables = "array('" . implode("','", $dependentTables) . "')";
-        $referencedMap = array();
-
-        foreach ($tableDefinition['referenceMap'] as $column => $reference)
-        {
-            $referencedMap[] = <<<CODE
-        '$column' => array(
-            'columns' => '$reference[columns]',
-            'refTableClass' => '$reference[refTableClass]',
-            'refColumns' => '$reference[refColumns]'
-        )
-CODE;
-        }
-
-        $referencedMap = "array(        \n" . implode(",\n\n", $referencedMap) . "\n    )";
-
-        return <<<CODE
-<?php
-
-/**
- * Definition class for table $tableName.
- *
- * Do NOT write anything in this file, it will be removed when you regenerated.
- *
- * @package $this->_packageName
- * @author Zodeken
- * @version \$Id\$
- *
- * @method $tableDefinition[rowClassName] createRow(array \$data, string \$defaultSource = null)
- * @method $tableDefinition[rowsetClassName] fetchAll(string|array|Zend_Db_Table_Select \$where = null, string|array \$order = null, int \$count = null, int \$offset = null)
- * @method $tableDefinition[rowClassName] fetchRow(string|array|Zend_Db_Table_Select \$where = null, string|array \$order = null, int \$offset = null)
- * @method $tableDefinition[rowsetClassName] find()
- *
- */
-abstract class $tableDefinition[classNameAbstract] extends Zend_Db_Table_Abstract
-{
-    /**
-     * @var string
-     */
-    protected \$_name = '$tableDefinition[name]';
-
-    /**
-     * @var array
-     */
-    protected \$_primary = $primaryKey;
-
-    /**
-     * @var array
-     */
-    protected \$_dependentTables = $dependentTables;
-
-    /**
-     * @var array
-     */
-    protected \$_referenceMap = $referencedMap;
-
-    /**
-     * @var string
-     */
-    protected \$_rowClass = '$tableDefinition[rowClassName]';
-
-    /**
-     * @var string
-     */
-    protected \$_rowsetClass = '$tableDefinition[rowsetClassName]';
-
-    /**
-     * Get the table name
-     *
-     * @return string
-     */
-    public function getName()
-    {
-        return \$this->_name;
-    }
-
-    /**
-     * Used to fetch a rowset and build an associative array from it.
-     *
-     * The first column is used as key and the second column is used as corresponding value.
-     *
-     * @param string|array|Zend_Db_Table_Select \$where  OPTIONAL An SQL WHERE clause or Zend_Db_Table_Select object.
-     * @param string|array                      \$order  OPTIONAL An SQL ORDER clause.
-     * @param int                               \$count  OPTIONAL An SQL LIMIT count.
-     * @param int                               \$offset OPTIONAL An SQL LIMIT offset.
-     * @return array
-     */
-    public function fetchPairs(\$where = null, \$order = null, \$count = null, \$offset = null)
-    {
-        \$return = array();
-
-        if (!(\$where instanceof Zend_Db_Table_Select)) {
-            \$select = \$this->select();
-
-            if (\$where !== null) {
-                \$this->_where(\$select, \$where);
-            }
-
-            if (\$order !== null) {
-                \$this->_order(\$select, \$order);
-            }
-
-            if (\$count !== null || \$offset !== null) {
-                \$select->limit(\$count, \$offset);
-            }
-
-        } else {
-            \$select = \$where;
-        }
-
-        \$stmt = \$this->_db->query(\$select);
-        \$rows = \$stmt->fetchAll(Zend_Db::FETCH_NUM);
-
-        if (count(\$rows) == 0) {
-            return array();
-        }
-
-        foreach (\$rows as \$row)
-        {
-            \$return[\$row[0]] = \$row[1];
-        }
-
-        return \$return;
-    }
-
-    /**
-     * Fetch the first field's value of the first row.
-     *
-     * @param string|array|Zend_Db_Table_Select \$where  OPTIONAL An SQL WHERE clause or Zend_Db_Table_Select object.
-     * @param string|array                      \$order  OPTIONAL An SQL ORDER clause.
-     * @param int                               \$offset OPTIONAL An SQL OFFSET value.
-     * @return mixed value of the first row's first column or null if no rows found.
-     */
-    public function fetchOne(\$where = null, \$order = null, \$offset = null)
-    {
-        if (!(\$where instanceof Zend_Db_Table_Select)) {
-            \$select = \$this->select();
-
-            if (\$where !== null) {
-                \$this->_where(\$select, \$where);
-            }
-
-            if (\$order !== null) {
-                \$this->_order(\$select, \$order);
-            }
-
-            \$select->limit(1, ((is_numeric(\$offset)) ? (int) \$offset : null));
-
-        } else {
-            \$select = \$where->limit(1, \$where->getPart(Zend_Db_Select::LIMIT_OFFSET));
-        }
-
-        \$stmt = \$this->_db->query(\$select);
-        \$rows = \$stmt->fetchAll(Zend_Db::FETCH_NUM);
-
-        if (count(\$rows) == 0) {
-            return null;
-        }
-
-        return \$rows[0][0];
-    }
-
-    /**
-     * Fetch first column's values of all rows.
-     *
-     * @param string|array|Zend_Db_Table_Select \$where  OPTIONAL An SQL WHERE clause or Zend_Db_Table_Select object.
-     * @param string|array                      \$order  OPTIONAL An SQL ORDER clause.
-     * @param int                               \$count  OPTIONAL An SQL LIMIT count.
-     * @param int                               \$offset OPTIONAL An SQL LIMIT offset.
-     * @return array List of values.
-     */
-    public function fetchOnes(\$where = null, \$order = null, \$count = null, \$offset = null)
-    {
-        \$return = array();
-
-        if (!(\$where instanceof Zend_Db_Table_Select)) {
-            \$select = \$this->select();
-
-            if (\$where !== null) {
-                \$this->_where(\$select, \$where);
-            }
-
-            if (\$order !== null) {
-                \$this->_order(\$select, \$order);
-            }
-
-            if (\$count !== null || \$offset !== null) {
-                \$select->limit(\$count, \$offset);
-            }
-
-        } else {
-            \$select = \$where;
-        }
-
-        \$stmt = \$this->_db->query(\$select);
-        \$rows = \$stmt->fetchAll(Zend_Db::FETCH_NUM);
-
-        if (count(\$rows) == 0) {
-            return array();
-        }
-
-        foreach (\$rows as \$row)
-        {
-            \$return[] = \$row[0];
-        }
-
-        return \$return;
-    }
-}
-
-CODE;
+        return require $this->_zodekenDir . '/templates/table-abstract.php';
     }
 
     /**
@@ -1229,11 +631,14 @@ CODE;
 
                 $field = array(
                     'name' => $fieldRow['Field'],
+                    'getFunctionName' => 'get' . $this->_getCamelCase($fieldRow['Field']),
+                    'setFunctionName' => 'set' . $this->_getCamelCase($fieldRow['Field']),
                     'label' => $this->_getLabel($fieldRow['Field']),
                     'is_required' => 'YES' === $fieldRow['Null'] ? false : true,
                     'is_primary_key' => $isPrimaryKey,
                     'default_value' => $fieldRow['Default'],
                     'type' => strtolower($typeAnalyzed[1]),
+                    'php_type' => isset($this->_mysqlToPhpTypesMap[$typeAnalyzed[1]]) ? $this->_mysqlToPhpTypesMap[$typeAnalyzed[1]] : 'string',
                     'type_arguments' => ''
                 );
 
@@ -1283,6 +688,7 @@ CODE;
                 'className' => $this->_getDbTableClassName($tableName),
                 'classNameAbstract' => $this->_getDbTableClassName($tableName) . '_Abstract',
                 'baseClassName' => $this->_getCamelCase($tableName),
+                'controllerName' => str_replace('_', '-', $tableName),
                 'rowClassName' => $this->_getRowClassName($tableName),
                 'rowClassNameAbstract' => $this->_getRowClassName($tableName) . '_Abstract',
                 'rowsetClassName' => $this->_getRowsetClassName($tableName),

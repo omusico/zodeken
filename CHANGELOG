@@ -1,3 +1,17 @@
+1.2.0 (March 25, 2012)
+    - Added basic CRUD actions including create, read, update, delete forms
+    - A grid comes with basic search, filter features
+        - Pagination
+        - Column (ENUM/SET, linked field) filter
+        - Multiple deletion
+        - Sorting
+    - Added getDbSelectByParams() function to table-abstract that used by the grid
+    - Added getZodekenAutoLabel() function to row-abstract that returns value of
+    the field that has been automatically guessed as the label
+    - Added ->setValue(date(...)) to datetime, time, timestamp fields of forms
+    - Generated code is separated into templates for easy modifications
+    - Added an option that allows overriding existing files
+    - Zend_Form is set as the default forms' parent class
 1.1.5 (Sep 17, 2011)
     - Fixed a bug that always set the foreign key column to required
     - Removed schema from DbTable

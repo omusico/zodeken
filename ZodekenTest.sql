@@ -51,7 +51,7 @@ CREATE TABLE `member` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `email` varchar(150) COLLATE utf8_unicode_ci NOT NULL,
   `gender` enum('Male','Female') COLLATE utf8_unicode_ci DEFAULT NULL,
-  `date_registered` int(10) unsigned DEFAULT NULL,
+  `date_registered` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email_UNIQUE` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -63,7 +63,7 @@ CREATE TABLE `member` (
 
 LOCK TABLES `member` WRITE;
 /*!40000 ALTER TABLE `member` DISABLE KEYS */;
-INSERT INTO `member` VALUES (1,'me@ndthuan.com','Male',1234567890),(2,'ndthuan@gmail.com','Female',1234569870);
+INSERT INTO `member` VALUES (1,'me@ndthuan.com','Male','2011-09-18 18:32:15'),(2,'ndthuan@gmail.com','Female','2012-03-31 20:15:04');
 /*!40000 ALTER TABLE `member` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -78,7 +78,7 @@ CREATE TABLE `post` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `title` varchar(250) COLLATE utf8_unicode_ci NOT NULL,
   `content` longtext COLLATE utf8_unicode_ci NOT NULL,
-  `date_posted` int(10) unsigned DEFAULT NULL,
+  `date_posted` datetime DEFAULT NULL,
   `category_id` int(10) unsigned NOT NULL,
   `owner_id` int(10) unsigned NOT NULL,
   PRIMARY KEY (`id`),
