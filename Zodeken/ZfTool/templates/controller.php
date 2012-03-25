@@ -51,7 +51,7 @@ class $tableDefinition[baseClassName]Controller extends Zend_Controller_Action
                 \$values = \$form->getValues();
                     
                 \$table$tableDefinition[baseClassName] = new $tableDefinition[className]();
-                \$table$tableDefinition[baseClassName]->createRow(\$values)->save();
+                \$table$tableDefinition[baseClassName]->insert(\$values);
                     
                 \$this->_helper->redirector('index');
                 exit;
