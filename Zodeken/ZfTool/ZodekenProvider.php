@@ -64,12 +64,6 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
     protected $_packageName;
 
     /**
-     *
-     * @var string
-     */
-    protected $_formBaseClass = 'Zend_Form';
-
-    /**
      * Current working directory
      * 
      * @var string
@@ -249,32 +243,51 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         }
 
         $eol = PHP_EOL;
+        
+        // load the output files config
+        $zodekenDir = dirname(__FILE__);
+        $xdoc = new DOMDocument();
+        $xdoc->load($zodekenDir . '/output-config.xml');
+        $outputs = array();
+        $asciiChar = 97;
+        $allKeys = array();
+        
+        $question = array("{$eol}Which files do you want to generate?{$eol}- Enter 1 to generate all{$eol}- Enter a comma-separated list of generated files, e.g. a,b,c,d{$eol}    ");
+        
+        foreach ($xdoc->getElementsByTagName('output') as $outputElement)
+        {
+            $output = array(
+                'key' => strtolower(chr($asciiChar++)), 
+                'templateName' => $outputElement->getAttribute('templateName'),
+                'templateFile' => $zodekenDir . '/templates/' . $outputElement->getAttribute('templateName'),
+                'canOverride' => (int) $outputElement->getAttribute('canOverride'),
+                'outputPath' => $outputElement->getAttribute('outputPath'),
+                'acceptMapTable' => $outputElement->getAttribute('acceptMapTable'),
+            );
+            
+            $outputs[] = $output;
+            
+            $allKeys[] = strtolower($output['key']);
+            
+            $question[] = $output['key'] . '. ' . $output['templateName'];
+        }
+        
+        $question = implode($eol . '    ', $question) . "{$eol}{$eol}Your choice: ";
 
-        $question = "Which component do you want to generate?{$eol}{$eol}"
-            . "1. Db_Tables{$eol}2. Mappers{$eol}4. Forms{$eol}8. CRUD{$eol}{$eol}";
+        $input = strtolower(trim($this->_readInput($question)));
 
-        $question .= "Your choice (15): ";
-
-        $mode = (int) $this->_readInput($question);
-
-        if (!$mode) {
-            $mode = 15;
+        if ('1' == $input) {
+            $keys = $allKeys;
+        } elseif ($input) {
+            $keys = explode(',', $input);
+        } else {
+            $keys = array();
         }
 
         $packageName = $this->_readInput("Your package name ($this->_packageName): ");
-        
-        if (self::GENERATE_FORMS & $mode) {
-            $formBaseClass = $this->_readInput("Form's parent class ($this->_formBaseClass): ");
-        } else {
-            $formBaseClass = null;
-        }
 
         if (!empty($packageName)) {
             $this->_packageName = $packageName;
-        }
-
-        if (!empty($formBaseClass)) {
-            $this->_formBaseClass = $formBaseClass;
         }
 
         // auto-add "Zodeken_" to the autoloadernamespaces directive
@@ -319,41 +332,24 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         foreach ($this->_tables as $tableName => $tableDefinition)
         {
             $tableBaseClassName = $tableDefinition['baseClassName'];
-
-            if (self::GENERATE_DB_TABLES & $mode) {
-                $tableCode = $this->_getDbTableCode($tableDefinition);
-                $rowCode = $this->_getRowCode($tableDefinition);
-                $rowsetCode = $this->_getRowsetCode($tableDefinition);
-                $tableAbstractCode = $this->_getDbTableAbstractCode($tableDefinition);
-                $rowAbstractCode = $this->_getRowAbstractCode($tableDefinition);
-                $rowsetAbstractCode = $this->_getRowsetAbstractCode($tableDefinition);
-
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['classNameAbstract']) . '.php', $tableAbstractCode, true);
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowClassNameAbstract']) . '.php', $rowAbstractCode, true);
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowsetClassNameAbstract']) . '.php', $rowsetAbstractCode, true);
-
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['className']) . '.php', $tableCode, $forceOverriding ? true : false);
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowClassName']) . '.php', $rowCode, $forceOverriding ? true : false);
-                $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['rowsetClassName']) . '.php', $rowsetCode, $forceOverriding ? true : false);
-            }
-
-            if (!$tableDefinition['isMap']) {
-                if (self::GENERATE_MAPPERS & $mode) {
-                    $this->_createFile($modelsDir . '/' . str_replace(array($this->_appnamespace . 'Model_', '_'), array('', '/'), $tableDefinition['mapperClassName']) . '.php', $this->_getMapperCode($tableDefinition), $forceOverriding ? true : false);
+            
+            foreach ($outputs as $output)
+            {
+                if (!in_array($output['key'], $keys) || $tableDefinition['isMap'] && !$output['acceptMapTable']) {
+                    continue;
                 }
-
-                if (self::GENERATE_FORMS & $mode) {
-                    $this->_createFile($formsDir . '/' . str_replace(array($this->_appnamespace . 'Form_', '_'), array('', '/'), $tableDefinition['formClassName']) . '.php', $this->_getFormCode($tableDefinition), $forceOverriding ? true : false);
-                    $this->_createFile($formsDir . '/' . str_replace(array($this->_appnamespace . 'Form_', '_'), array('', '/'), $tableDefinition['formClassNameLatest']) . '.php', $this->_getFormCode($tableDefinition, true), true);
-                }
-
-                if (self::GENERATE_CRUD & $mode) {
-                    $this->_createFile($controllersDir . '/' . $tableBaseClassName . 'Controller.php', $this->_getControllerCode($tableDefinition), $forceOverriding ? true : false);
-                    $this->_createFile($viewsDir . '/' . $tableDefinition['controllerName'] . '/create.phtml', $this->_getCreateViewCode($tableDefinition), $forceOverriding ? true : false);
-                    $this->_createFile($viewsDir . '/' . $tableDefinition['controllerName'] . '/update.phtml', $this->_getUpdateViewCode($tableDefinition), $forceOverriding ? true : false);
-                    $this->_createFile($viewsDir . '/' . $tableDefinition['controllerName'] . '/index.phtml', $this->_getIndexViewCode($tableDefinition), $forceOverriding ? true : false);
-                    $this->_createFile($viewsDir . '/pagination_control.phtml', $this->_getPaginationViewCode($tableDefinition), $forceOverriding ? true : false);
-                }
+                
+                $fileName = $output['outputPath'];
+                $canOverride = $output['canOverride'];
+                $templateFile = $output['templateFile'];
+                
+                $code = require $templateFile;
+                
+                $fileName = str_replace('{APPLICATION_DIR}', $currentWorkingDirectory . '/application', $fileName);
+                $fileName = str_replace('{TABLE_CAMEL_NAME}', $tableDefinition['baseClassName'], $fileName);
+                $fileName = str_replace('{TABLE_CONTROLLER_NAME}', $tableDefinition['controllerName'], $fileName);
+                
+                $this->_createFile($fileName, $code, $forceOverriding ? true : $canOverride);
             }
         }
     }
