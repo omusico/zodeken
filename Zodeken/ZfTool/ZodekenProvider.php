@@ -252,6 +252,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $asciiChar = 97;
         $allKeys = array();
         
+        if ($forceOverriding) {
+            echo "\033[1;31mATTENTION! Zodeken will override all existing files!\033[0;37m";
+        }
+        
         $question = array("{$eol}Which files do you want to generate?{$eol}- Enter 1 to generate all{$eol}- Enter a comma-separated list of generated files, e.g. a,b,c,d{$eol}    ");
         
         foreach ($xdoc->getElementsByTagName('output') as $outputElement)
@@ -465,125 +469,6 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $string = ucwords($string);
 
         return $string;
-    }
-
-    /**
-     * Generate controller code
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getControllerCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/controller.php';
-    }
-
-    /**
-     * Generate create view code
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getIndexViewCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/view-index.php';
-    }
-
-    /**
-     * Generate create view code
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getCreateViewCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/view-create.php';
-    }
-
-    /**
-     * Generate update view code
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getUpdateViewCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/view-update.php';
-    }
-
-    /**
-     * Generate update view code
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getPaginationViewCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/view-pagination.php';
-    }
-
-    /**
-     * Generate form code
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getFormCode($tableDefinition, $isNew = false)
-    {
-        return require $this->_zodekenDir . '/templates/form.php';
-    }
-
-    /**
-     * Generate mapper code
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getMapperCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/mapper.php';
-    }
-
-    protected function _getRowCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/row.php';
-    }
-
-    /**
-     * Create row class for a table.
-     *
-     * @param array $tableDefinition
-     * @return string
-     */
-    protected function _getRowAbstractCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/row-abstract.php';
-    }
-
-    protected function _getRowsetCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/rowset.php';
-    }
-
-    protected function _getRowsetAbstractCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/rowset-abstract.php';
-    }
-
-    protected function _getDbTableCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/table.php';
-    }
-
-    /**
-     * Create DbTable definition class.
-     *
-     * @param string $tableDefinition
-     * @return string
-     */
-    protected function _getDbTableAbstractCode($tableDefinition)
-    {
-        return require $this->_zodekenDir . '/templates/table-abstract.php';
     }
 
     /**
