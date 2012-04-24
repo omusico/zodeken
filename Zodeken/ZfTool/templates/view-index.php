@@ -1,5 +1,11 @@
 <?php
 
+$urlHelperModulePart = '';
+if ($this->_moduleName) {
+    $urlHelperModulePart = "'module' => '$this->_moduleName',";
+}
+
+
 $linkedTables = array();
 $linkedTablesCode = array();
 $searchableFields = array('all' => 'All');
@@ -75,8 +81,8 @@ RENDER;
 }
 
 $headers[] = '<th>Actions</th>';
-$rowFields[] = '<td align="center"><a href="<?php echo $this->url(array(\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'update\', \'id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>">Edit</a> 
-    - <a onclick="return confirm(\'Confirm deletion!\');" href="<?php echo $this->url(array(\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'delete\', \'del_id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>">Delete</a></td>';
+$rowFields[] = '<td align="center"><a href="<?php echo $this->url(array(' . $urlHelperModulePart . '\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'update\', \'id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>">Edit</a> 
+    - <a onclick="return confirm(\'Confirm deletion!\');" href="<?php echo $this->url(array(' . $urlHelperModulePart . '\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'delete\', \'del_id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>">Delete</a></td>';
 
 $headers = '        <tr>
             ' . implode("\n            ", $headers) . '
@@ -130,10 +136,10 @@ function updateFilters(paramName, paramValue)
 </script>
 
 <div style="text-align:right">
-<a href="<?php echo \$this->url(array('controller' => '$tableDefinition[controllerName]', 'action' => 'index'), null, true); ?>">Reset Filters</a>
-- <a href="<?php echo \$this->url(array('controller' => '$tableDefinition[controllerName]', 'action' => 'create'), null, true); ?>">Add New</a></div><br />
+<a href="<?php echo \$this->url(array($urlHelperModulePart'controller' => '$tableDefinition[controllerName]', 'action' => 'index'), null, true); ?>">Reset Filters</a>
+- <a href="<?php echo \$this->url(array($urlHelperModulePart'controller' => '$tableDefinition[controllerName]', 'action' => 'create'), null, true); ?>">Add New</a></div><br />
 
-<form method="get" action="<?php echo \$this->url(array('controller' => '$tableDefinition[controllerName]', 'action' => 'index'), null, true); ?>">
+<form method="get" action="<?php echo \$this->url(array($urlHelperModulePart'controller' => '$tableDefinition[controllerName]', 'action' => 'index'), null, true); ?>">
 <div>
 Search for: <input type="text" name="_kw" value="<?php echo htmlspecialchars(\$this->param_kw); ?>" /> in 
 <?php echo \$this->formSelect('_sm', \$this->param_sm, array(), $searchableFields); ?>
@@ -141,7 +147,7 @@ Search for: <input type="text" name="_kw" value="<?php echo htmlspecialchars(\$t
 </div>
 </form>
 
-<form method="post" action="<?php echo \$this->url(array('controller' => '$tableDefinition[controllerName]', 'action' => 'delete'), null, true); ?>" onsubmit="return confirm('Delete selected rows?');">
+<form method="post" action="<?php echo \$this->url(array($urlHelperModulePart'controller' => '$tableDefinition[controllerName]', 'action' => 'delete'), null, true); ?>" onsubmit="return confirm('Delete selected rows?');">
 <table width="100%" border="1" style="border-collapse:collapse" cellspacing="0" 
     cellpadding="3">
     <thead>

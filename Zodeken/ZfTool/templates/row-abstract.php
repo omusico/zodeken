@@ -8,7 +8,7 @@ $autoLabelField = null;
 foreach ($tableDefinition['fields'] as $field) {
     $type = strtolower($field['type']);
     
-    if ('varchar' === $type) {
+    if (null === $autoLabelField && 'varchar' === $type) {
         $autoLabelField = $field['name'];
     }
     

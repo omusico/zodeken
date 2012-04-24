@@ -62,6 +62,20 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      * @var string
      */
     protected $_packageName;
+    
+    /**
+     * The module name of generated code, set to null or empty to disable
+     * 
+     * @var string 
+     */
+    protected $_moduleName;
+    
+    /**
+     * The controller name prefix
+     * 
+     * @var string
+     */
+    protected $_controllerNamePrefix = '';
 
     /**
      * Current working directory
@@ -171,6 +185,13 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         $configFilePath = $configDir . 'application.ini';
 
+        if (!file_exists($configFilePath)) {
+
+            throw new Zodeken_ZfTool_Exception(
+                'Application config file not found: ' . $configFilePath
+            );
+        }
+
         $backupName = 'application.ini';
         $backupCount = 1;
 
@@ -180,13 +201,6 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
             ++$backupCount;
         }
         copy($configFilePath, $configDir . "$backupName.$backupCount");
-
-        if (!file_exists($configFilePath)) {
-
-            throw new Zodeken_ZfTool_Exception(
-                'Application config file not found: ' . $configFilePath
-            );
-        }
 
         $this->_cwd = $currentWorkingDirectory;
 
@@ -235,11 +249,6 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         // get package name from config
         if ($writableConfigs->zodeken->packageName) {
             $this->_packageName = $writableConfigs->zodeken->packageName;
-        }
-
-        // get form base class from config
-        if ($writableConfigs->zodeken->formBaseClass) {
-            $this->_formBaseClass = $writableConfigs->zodeken->formBaseClass;
         }
 
         $eol = PHP_EOL;
@@ -293,6 +302,25 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         if (!empty($packageName)) {
             $this->_packageName = $packageName;
         }
+        
+        // module support has been suggested by Brian Gerrity (bgerrity73@gmail.com)
+        $moduleName = $this->_readInput("Module name (leave empty for default): ");
+        
+        if (!empty($moduleName)) {
+            $this->_moduleName = $moduleName;
+            $this->_controllerNamePrefix = $this->_getCamelCase($moduleName) . '_';
+        }
+        
+        // auto-add "resources.frontController.moduleDirectory" if module is specified
+        if (!empty($this->_moduleName)) {
+            if (!$writableConfigs->production->resources->frontController->moduleDirectory) {
+                $writableConfigs->production->resources->frontController->moduleDirectory = 'APPLICATION_PATH/modules';
+            }
+            
+            if (!$writableConfigs->production->resources->modules) {
+                $writableConfigs->production->resources->modules = '';
+            }
+        }
 
         // auto-add "Zodeken_" to the autoloadernamespaces directive
         $autoloaderNamespaces = $writableConfigs->production->autoloadernamespaces;
@@ -309,7 +337,6 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         // modify configs
         $writableConfigs->zodeken->packageName = $this->_packageName;
-        $writableConfigs->zodeken->formBaseClass = $this->_formBaseClass;
         $writableConfigs->production->autoloadernamespaces = $autoloaderNamespaces;
 
         $configWriter = new Zend_Config_Writer_Ini(array(
@@ -327,11 +354,12 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         // end of modifying configs
 
         $this->_analyzeTableDefinitions();
-
-        $modelsDir = $currentWorkingDirectory . '/application/models';
-        $formsDir = $currentWorkingDirectory . '/application/forms';
-        $controllersDir = $currentWorkingDirectory . '/application/controllers';
-        $viewsDir = $currentWorkingDirectory . '/application/views/scripts';
+        
+        $moduleBaseDirectory = $currentWorkingDirectory . '/application';
+        
+        if (!empty($this->_moduleName)) {
+            $moduleBaseDirectory .= '/modules/' . $this->_moduleName;
+        }
 
         foreach ($this->_tables as $tableName => $tableDefinition)
         {
@@ -349,7 +377,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
                 
                 $code = require $templateFile;
                 
-                $fileName = str_replace('{APPLICATION_DIR}', $currentWorkingDirectory . '/application', $fileName);
+                $fileName = str_replace('{MODULE_BASE_DIR}', $moduleBaseDirectory, $fileName);
+                $fileName = str_replace('{APPLICATION_DIR}', $moduleBaseDirectory, $fileName);
                 $fileName = str_replace('{TABLE_CAMEL_NAME}', $tableDefinition['baseClassName'], $fileName);
                 $fileName = str_replace('{TABLE_CONTROLLER_NAME}', $tableDefinition['controllerName'], $fileName);
                 
@@ -446,7 +475,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected function _getCamelCase($string)
     {
-        $string = str_replace('_', ' ', $string);
+        $string = str_replace(array('_', '-'), ' ', $string);
         $string = ucwords($string);
         $string = str_replace(' ', '', $string);
 

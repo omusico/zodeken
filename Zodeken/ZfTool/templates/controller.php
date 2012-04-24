@@ -11,7 +11,7 @@ return <<<CODE
  * @version \$Id\$
  *
  */
-class $tableDefinition[baseClassName]Controller extends Zend_Controller_Action
+class {$this->_controllerNamePrefix}$tableDefinition[baseClassName]Controller extends Zend_Controller_Action
 {
     public function indexAction()
     {

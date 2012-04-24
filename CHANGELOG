@@ -1,5 +1,8 @@
+1.3.0 (April 24, 2012)
+    - Added module support (suggested by Brian Gerrity <bgerrity73@gmail.com>)
+    - Corrected getZodekenAutoLabel()
 1.2.5 (April 3, 2012)
-	- Can now control what files and their names will be generated
+    - Can now control what files and their names will be generated
 1.2.0 (March 25, 2012)
     - Added basic CRUD actions including create, read, update, delete forms
     - A grid comes with basic search, filter features
