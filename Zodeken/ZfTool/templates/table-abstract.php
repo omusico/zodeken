@@ -9,14 +9,8 @@ foreach ($tableDefinition['dependentTables'] as $table)
     $dependentTables[] = $this->_getDbTableClassName($table[0]);
 }
 
-$pkCode = '';
-
-if (!empty($tableDefinition['primaryKey'])) {
-    $pkCode = "'" . implode("','", $tableDefinition['primaryKey']) . "'";
-}
-
-$primaryKey = "array($pkCode)";
-$dependentTables = "array('" . implode("','", $dependentTables) . "')";
+$primaryKey = var_export($tableDefinition['primaryKey'], true);
+$dependentTables = var_export($dependentTables, true);
 $referencedMap = array();
 
 foreach ($tableDefinition['referenceMap'] as $column => $reference)
@@ -35,9 +29,12 @@ $referencedMap = "array(        \n" . implode(",\n\n", $referencedMap) . "\n    
 
 $getDbSelectByParamsWheres = array();
 $getDbSelectByParamsSearchableWheres = array();
+$createDefaultRow = array();
 
 foreach ($tableDefinition['fields'] as $field)
 {
+    $createDefaultRow[$field['name']] = $field['default_value'];
+    
     $getDbSelectByParamsWheres[] = <<<CODE
         if (isset(\$params['$field[name]']) && !empty(\$params['$field[name]'])) {
             \$select->where('$field[name] = ?', \$params['$field[name]']);
@@ -53,6 +50,7 @@ CODE;
     }
 }
 
+$createDefaultRow = var_export($createDefaultRow, true);
 $getDbSelectByParamsWheres = implode("\n\n", $getDbSelectByParamsWheres);
 $getDbSelectByParamsSearchableWheres = implode("\n\n", $getDbSelectByParamsSearchableWheres);
 
@@ -115,6 +113,16 @@ abstract class $tableDefinition[classNameAbstract] extends Zend_Db_Table_Abstrac
     public function getName()
     {
         return \$this->_name;
+    }
+        
+    /**
+     * Create a row object with default values
+     *
+     * @return $tableDefinition[rowClassName]
+     */
+    public function createDefaultRow()
+    {
+        return \$this->createRow($createDefaultRow);
     }
         
     /**
