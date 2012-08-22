@@ -140,6 +140,12 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      * @var string
      */
     protected $_appnamespace = 'Application_';
+    
+    /**
+     *
+     * @var string
+     */
+    protected $_outputTemplate = 'default';
 
     /**
      *
@@ -243,6 +249,11 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
             $this->_packageName = $writableConfigs->zodeken->packageName;
         }
 
+        // get package name from config
+        if ($writableConfigs->zodeken->outputTemplate) {
+            $this->_outputTemplate = $writableConfigs->zodeken->outputTemplate;
+        }
+
         $eol = PHP_EOL;
 
         // load the output files config
@@ -264,7 +275,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
             $output = array(
                 'key' => strtolower(chr($asciiChar++)),
                 'templateName' => $outputElement->getAttribute('templateName'),
-                'templateFile' => $zodekenDir . '/templates/' . $outputElement->getAttribute('templateName'),
+                'templateFile' => $zodekenDir . '/templates/' . $this->_outputTemplate . '/' . $outputElement->getAttribute('templateName'),
                 'canOverride' => (int) $outputElement->getAttribute('canOverride'),
                 'outputPath' => $outputElement->getAttribute('outputPath'),
                 'acceptMapTable' => $outputElement->getAttribute('acceptMapTable'),
@@ -288,13 +299,39 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         } else {
             $keys = array();
         }
+        
+        $templates = array_map('basename', glob($zodekenDir . '/templates/*', GLOB_ONLYDIR));
+        $templateQuestion = "\nEnter output template\n\n";
+        foreach ($templates as $templateName)
+        {
+            $templateQuestion .= "    $templateName\n";
+        }
+        $templateQuestion .= "\nYour choice ($this->_outputTemplate): ";
+        $template = $this->_readInput($templateQuestion);
+                
+        if ('' === $template) {
+            $template = $this->_outputTemplate;
+        }
+        
+        if (!is_dir($zodekenDir . "/templates/$template")) {
+            throw new Exception('Invalid template');
+        }
+
+        $this->_outputTemplate = $template;
+
+        if ($writableConfigs->zodeken->outputTemplate != $this->_outputTemplate) {
+            $writableConfigs->zodeken->outputTemplate = $this->_outputTemplate;
+            $shouldUpdateConfigFile = true;
+        }
 
         $packageName = $this->_readInput("Your package name ($this->_packageName): ");
 
         if (!empty($packageName)) {
             $this->_packageName = $packageName;
-            $writableConfigs->zodeken->packageName = $this->_packageName;
-            $shouldUpdateConfigFile = true;
+            if ($writableConfigs->zodeken->packageName != $this->_packageName) {
+                $writableConfigs->zodeken->packageName = $this->_packageName;
+                $shouldUpdateConfigFile = true;
+            }
         }
 
         // module support has been suggested by Brian Gerrity (bgerrity73@gmail.com)
