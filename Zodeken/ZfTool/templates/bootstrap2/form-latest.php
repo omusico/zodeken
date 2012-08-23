@@ -50,7 +50,7 @@ foreach ($tableDefinition['fields'] as $field) {
                 $assocOptions = array();
                 foreach ($numericOptions as $option) {
                     $option = str_replace("'", "\'", $option);
-                    $assocOptions[] = "'$option' => '" . ucfirst($option) . "'";
+                    $assocOptions[] = "'$option' => '$option'";
                 }
                 $array = 'array(' . implode(',', $assocOptions) . ')';
                 $fieldType = 'radio';
