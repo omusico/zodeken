@@ -17,7 +17,7 @@ foreach ($tableDefinition['fields'] as $field)
     $columnFilters = '';
     $renderedFieldData = "echo \$row->$field[name];";
     
-    if ('char' === substr($field['type'], -4) || 'text' === substr($field['type'], -4)) {
+    if (('char' === substr($field['type'], -4) || 'text' === substr($field['type'], -4)) && 'password' !== $field['name']) {
         $searchableFields[$field['name']] = $field['label'];
     }
     

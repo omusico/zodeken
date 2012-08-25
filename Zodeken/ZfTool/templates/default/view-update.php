@@ -4,6 +4,6 @@ return <<<CODE
 <h1>Update $tableDefinition[baseClassName]: <?php echo \$this->row->getZodekenAutoLabel(); ?></h1>
 
 <?php
-echo \$this->form;
+echo \$this->form->setAction(\$this->url());
 CODE;
 ?>

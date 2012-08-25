@@ -4,6 +4,6 @@ return <<<CODE
 <h1>Create $tableDefinition[baseClassName]</h1>
 
 <?php
-echo \$this->form;
+echo \$this->form->setAction(\$this->url());
 CODE;
 ?>

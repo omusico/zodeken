@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zodeken>
+    <outputGroup name="crud">
+        <output templateName="controller.php" canOverride="0" acceptMapTable="1"
+                outputPath="{APPLICATION_DIR}/controllers/{TABLE_CAMEL_NAME}Controller.php" />
+        <output templateName="view-create.php"  canOverride="0" acceptMapTable="0"
+                outputPath="{APPLICATION_DIR}/views/scripts/{TABLE_CONTROLLER_NAME}/create.phtml" />
+        <output templateName="view-index.php"  canOverride="0" acceptMapTable="0"
+                outputPath="{APPLICATION_DIR}/views/scripts/{TABLE_CONTROLLER_NAME}/index.phtml" />
+        <output templateName="view-pagination.php"  canOverride="0" acceptMapTable="0"
+                outputPath="{APPLICATION_DIR}/views/scripts/pagination_control.phtml" />
+
+        <output templateName="view-update.php"  canOverride="0" acceptMapTable="0"
+                outputPath="{APPLICATION_DIR}/views/scripts/{TABLE_CONTROLLER_NAME}/update.phtml" />
+    </outputGroup>
+
+    <outputGroup name="form">
+        <output templateName="form.php" canOverride="0" acceptMapTable="0"
+                outputPath="{APPLICATION_DIR}/forms/Edit{TABLE_CAMEL_NAME}.php" />
+
+        <output templateName="form-latest.php"  canOverride="1" acceptMapTable="0"
+                outputPath="{APPLICATION_DIR}/forms/Edit{TABLE_CAMEL_NAME}/Latest.php" />
+    </outputGroup>
+    
+    <outputGroup name="mapper">
+        <output templateName="mapper.php" canOverride="0" acceptMapTable="0"
+                outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}Mapper.php" />
+    </outputGroup>
+
+    <outputGroup name="dbtable">
+        <output templateName="row-abstract.php" canOverride="1" acceptMapTable="1"
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Row/Abstract.php" />
+        <output templateName="row.php" canOverride="0" acceptMapTable="1"
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Row.php" />
+        <output templateName="rowset-abstract.php"  canOverride="1" acceptMapTable="1"
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Rowset/Abstract.php" />
+        <output templateName="rowset.php"  canOverride="0" acceptMapTable="1"
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Rowset.php" />
+        <output templateName="table-abstract.php"  canOverride="1" acceptMapTable="1"
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/DbTable/Abstract.php" />
+        <output templateName="table.php"  canOverride="0" acceptMapTable="1"
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/DbTable.php" />
+    </outputGroup>
+</zodeken>

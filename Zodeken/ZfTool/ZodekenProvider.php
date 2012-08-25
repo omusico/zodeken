@@ -140,7 +140,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      * @var string
      */
     protected $_appnamespace = 'Application_';
-    
+
     /**
      *
      * @var string
@@ -157,21 +157,22 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
     protected function _createFile($filePath, $code, $allowOverride = false)
     {
         $baseDir = pathinfo($filePath, PATHINFO_DIRNAME);
+        $relativePath = str_replace($this->_cwd . '/', '', $filePath);
 
         if (!file_exists($baseDir)) {
             mkdir($baseDir, 0777, true);
         }
 
         if (!$allowOverride && file_exists($filePath)) {
-            echo "\033[31mExisting\033[37m: $filePath\n";
+            echo "\033[31mExisting\033[37m: $relativePath\n";
             return -1;
         }
 
         if (@file_put_contents($filePath, $code)) {
-            echo "\033[32mCreating\033[37m: $filePath\n";
+            echo "\033[32mCreating\033[37m: $relativePath\n";
             return 1;
         } else {
-            echo "\033[31mFAILED creating\033[37m: $filePath\n";
+            echo "\033[31mFAILED creating\033[37m: $relativePath\n";
         }
 
         return 0;
@@ -215,15 +216,15 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         if (null === $dbConfig) {
             throw new Zodeken_ZfTool_Exception(
-                "Db configs not found in your application.ini"
+                    "Db configs not found in your application.ini"
             );
         }
 
         // used to modify the file
         $writableConfigs = new Zend_Config_Ini($configFilePath, null, array(
-            'skipExtends' => true,
-            'allowModifications' => true
-        ));
+                    'skipExtends' => true,
+                    'allowModifications' => true
+                ));
 
         // get the app namespace
         if ($writableConfigs->production->appnamespace) {
@@ -258,9 +259,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
         // load the output files config
         $zodekenDir = dirname(__FILE__);
-        $xdoc = new DOMDocument();
-        $xdoc->load($zodekenDir . '/output-config.xml');
         $outputs = array();
+        $outputGroups = array();
         $asciiChar = 97;
         $allKeys = array();
 
@@ -268,38 +268,6 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
             echo "\033[1;31mATTENTION! Zodeken will override all existing files!\033[0;37m";
         }
 
-        $question = array("{$eol}Which files do you want to generate?{$eol}- Enter 1 to generate all{$eol}- Enter a comma-separated list of generated files, e.g. a,b,c,d{$eol}    ");
-
-        foreach ($xdoc->getElementsByTagName('output') as $outputElement)
-        {
-            $output = array(
-                'key' => strtolower(chr($asciiChar++)),
-                'templateName' => $outputElement->getAttribute('templateName'),
-                'templateFile' => $zodekenDir . '/templates/' . $this->_outputTemplate . '/' . $outputElement->getAttribute('templateName'),
-                'canOverride' => (int) $outputElement->getAttribute('canOverride'),
-                'outputPath' => $outputElement->getAttribute('outputPath'),
-                'acceptMapTable' => $outputElement->getAttribute('acceptMapTable'),
-            );
-
-            $outputs[] = $output;
-
-            $allKeys[] = strtolower($output['key']);
-
-            $question[] = $output['key'] . '. ' . $output['templateName'];
-        }
-
-        $question = implode($eol . '    ', $question) . "{$eol}{$eol}Your choice: ";
-
-        $input = strtolower(trim($this->_readInput($question)));
-
-        if ('1' == $input) {
-            $keys = $allKeys;
-        } elseif ($input) {
-            $keys = explode(',', $input);
-        } else {
-            $keys = array();
-        }
-        
         $templates = array_map('basename', glob($zodekenDir . '/templates/*', GLOB_ONLYDIR));
         $templateQuestion = "\nEnter output template\n\n";
         foreach ($templates as $templateName)
@@ -308,13 +276,83 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         }
         $templateQuestion .= "\nYour choice ($this->_outputTemplate): ";
         $template = $this->_readInput($templateQuestion);
-                
+
         if ('' === $template) {
             $template = $this->_outputTemplate;
         }
-        
+
         if (!is_dir($zodekenDir . "/templates/$template")) {
             throw new Exception('Invalid template');
+        }
+
+        $this->_outputTemplate = $template;
+        
+        // parse the config file
+        $xdoc = new DOMDocument();
+        $xdoc->load($zodekenDir . '/templates/' . $this->_outputTemplate . '/output-config.xml');
+
+        $question = array("
+Which files do you want to generate?
+- Enter 1 to generate all
+- Enter a list of groups, e.g. crud,form...
+- Or enter a list of individual template file keys, e.g. a,b,c,d...
+- You can combine groups with file keys, e.g. crud,h,i... {$eol}    ");
+
+        foreach ($xdoc->getElementsByTagName('outputGroup') as $outputGroupElement)
+        {
+            /* @var $outputGroupElement DOMElement */
+
+            $outputGroupName = $outputGroupElement->getAttribute('name');
+
+            $outputGroups[$outputGroupName] = array();
+
+            $question[] = $outputGroupName;
+
+            foreach ($outputGroupElement->getElementsByTagName('output') as $outputElement)
+            {
+                $output = array(
+                    'key' => strtolower(chr($asciiChar++)),
+                    'templateName' => $outputElement->getAttribute('templateName'),
+                    'templateFile' => $zodekenDir . '/templates/' . $this->_outputTemplate . '/' . $outputElement->getAttribute('templateName'),
+                    'canOverride' => (int) $outputElement->getAttribute('canOverride'),
+                    'outputPath' => $outputElement->getAttribute('outputPath'),
+                    'acceptMapTable' => $outputElement->getAttribute('acceptMapTable'),
+                );
+
+                $outputs[$output['key']] = $output;
+                $outputGroups[$outputGroupName][] = $output;
+
+                $allKeys[] = $output['key'];
+
+                $question[] = '    ' . $output['key'] . '. ' . $output['templateName'];
+            }
+        }
+
+        $question = implode($eol . '    ', $question) . "{$eol}{$eol}Your choice: ";
+
+        do {
+            $input = strtolower(trim($this->_readInput($question)));
+        } while ('' === $input);
+
+        if ('1' == $input) {
+            $keys = $allKeys;
+        } elseif ($input) {
+            $expectedOutputs = preg_split('#\s*,\s*#', $input);
+            $keys = array();
+            foreach ($expectedOutputs as $expectedOutput)
+            {
+                if (isset($outputGroups[$expectedOutput])) {
+                    foreach ($outputGroups[$expectedOutput] as $output)
+                    {
+                        $keys[] = $output['key'];
+                    }
+                } elseif (in_array($expectedOutput, $allKeys)) {
+                    $keys[] = $expectedOutput;
+                }
+            }
+            $keys = array_unique($keys);
+        } else {
+            $keys = array();
         }
 
         $this->_outputTemplate = $template;
@@ -410,9 +448,11 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         {
             $tableBaseClassName = $tableDefinition['baseClassName'];
 
-            foreach ($outputs as $output)
+            foreach ($keys as $key)
             {
-                if (!in_array($output['key'], $keys) || $tableDefinition['isMap'] && !$output['acceptMapTable']) {
+                $output = $outputs[$key];
+                
+                if ($tableDefinition['isMap'] && !$output['acceptMapTable']) {
                     continue;
                 }
 

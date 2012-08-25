@@ -87,7 +87,7 @@ foreach ($tableDefinition['fields'] as $field) {
             case 'varchar':
             case 'char':
                 $validators[] = 'new Zend_Validate_StringLength(array("max" => ' . $field['type_arguments'] . '))';
-                $fieldType = 'text';
+                $fieldType = 'password' == $field['type'] ? 'password' : 'text';
                 $filters[] = 'new Zend_Filter_StringTrim()';
                 $fieldConfigs[] = '->setAttrib("maxlength", ' . $field['type_arguments'] . ')';
                 $fieldConfigs[] = '->setAttrib("class", "input-xlarge")';
@@ -110,10 +110,10 @@ foreach ($tableDefinition['fields'] as $field) {
                     $fieldConfigs[] = '->setAttrib("class", "input-medium")';
                 } elseif ('date' == $field['type']) {
                     $fieldConfigs[] = '->setValue(date("Y-m-d"))';
-                    $fieldConfigs[] = '->setAttrib("class", "input-mini")';
+                    $fieldConfigs[] = '->setAttrib("class", "input-small")';
                 } elseif ('time' == $field['type']) {
                     $fieldConfigs[] = '->setValue(date("H:i:s"))';
-                    $fieldConfigs[] = '->setAttrib("class", "input-mini")';
+                    $fieldConfigs[] = '->setAttrib("class", "input-small")';
                 }
                 break;
         }

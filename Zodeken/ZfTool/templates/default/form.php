@@ -84,7 +84,7 @@ foreach ($tableDefinition['fields'] as $field) {
             case 'varchar':
             case 'char':
                 $validators[] = 'new Zend_Validate_StringLength(array("max" => ' . $field['type_arguments'] . '))';
-                $fieldType = 'text';
+                $fieldType = 'password' == $field['type'] ? 'password' : 'text';
                 $filters[] = 'new Zend_Filter_StringTrim()';
                 $fieldConfigs[] = '->setAttrib("maxlength", ' . $field['type_arguments'] . ')';
 

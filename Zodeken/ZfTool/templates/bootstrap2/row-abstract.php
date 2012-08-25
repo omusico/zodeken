@@ -150,6 +150,8 @@ return <<<CODE
  * @author Zodeken
  * @version \$Id\$
  *
+ * @method $tableDefinition[rowClassName] setFromArray(\$data)
+ *
 $properties
  */
 abstract class $tableDefinition[rowClassNameAbstract] extends Zend_Db_Table_Row_Abstract
