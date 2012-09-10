@@ -378,6 +378,7 @@ Which files do you want to generate?
         if (!empty($moduleName)) {
             $this->_moduleName = $moduleName;
             $this->_controllerNamePrefix = $this->_getCamelCase($moduleName) . '_';
+            $this->_appnamespace = $this->_getCamelCase($moduleName) . '_';
         }
 
         // auto-add "resources.frontController.moduleDirectory" if module is specified
