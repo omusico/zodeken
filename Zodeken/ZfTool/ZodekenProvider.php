@@ -180,17 +180,15 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
     /**
      * The public method that would be exposed into ZF tool
-     * @param boolean $overwriteAll
+     * @param boolean $force
      * @param string $tableList
      * @throws Zodeken_ZfTool_Exception
      * @throws Exception
      */
-    public function generate($overwriteAll = 0, $tableList = '')
+    public function generate($force = 0, $tableList = '')
     {
         $currentWorkingDirectory = getcwd();
         $shouldUpdateConfigFile = false;
-
-        $overwriteAll = $overwriteAll ? true : false;
 
         // replace the slash just to print a beautiful message :D
         $configDir = str_replace(
@@ -268,8 +266,8 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $asciiChar = 97;
         $allKeys = array();
 
-        if ($overwriteAll) {
-            echo "\033[1;31mATTENTION! Zodeken will override all existing files!\033[0;37m";
+        if ($force) {
+            echo "\033[1;31mATTENTION! Zodeken will overwrite existing files!\033[0;37m";
         }
 
         $templates = array_map('basename', glob($zodekenDir . '/templates/*', GLOB_ONLYDIR));
@@ -448,9 +446,18 @@ Which files do you want to generate?
         if (!empty($this->_moduleName)) {
             $moduleBaseDirectory .= '/modules/' . $this->_moduleName;
         }
+        
+        
+        if (!empty($tableList)) {
+            $tableList = explode(',', $tableList);
+        }
 
         foreach ($this->_tables as $tableName => $tableDefinition)
         {
+            if (!empty($tableList) && !in_array($tableName, $tableList)) {
+                continue;
+            }
+            
             $tableBaseClassName = $tableDefinition['baseClassName'];
 
             foreach ($keys as $key)
@@ -472,7 +479,7 @@ Which files do you want to generate?
                 $fileName = str_replace('{TABLE_CAMEL_NAME}', $tableDefinition['baseClassName'], $fileName);
                 $fileName = str_replace('{TABLE_CONTROLLER_NAME}', $tableDefinition['controllerName'], $fileName);
 
-                $this->_createFile($fileName, $code, $overwriteAll ? true : $canOverride);
+                $this->_createFile($fileName, $code, $force ? true : $canOverride);
             }
         }
     }
@@ -595,24 +602,16 @@ Which files do you want to generate?
      *
      * These configurations are used by other methods.
      */
-    protected function _analyzeTableDefinitions($tableList = '')
-    {
-        if (empty($tableList)) {
-            $tableList = array();
-            foreach ($this->_db->fetchAll("SHOW TABLES", array(), Zend_Db::FETCH_NUM) as $tableRow)
-            {
-                $tableList[] = $tableRow[0];
-            }
-        } else {
-            $tableList = explode(',', $tableList);
-        }
-        
+    protected function _analyzeTableDefinitions()
+    {        
         $tables = array();
 
         // get the list of tables
         echo "Analyzing tables\n";
-        foreach ($tableList as $tableName)
+        foreach ($this->_db->fetchAll("SHOW TABLES", array(), Zend_Db::FETCH_NUM) as $tableRow)
         {
+            $tableName = $tableRow[0];
+            
             $primaryKey = array();
             $fields = array();
             $dependentTables = array();
