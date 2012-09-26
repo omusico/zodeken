@@ -1,5 +1,19 @@
 <?php
 
+$nullReferencesCheck = array();
+
+foreach (array_keys($tableDefinition['referenceMap']) as $refColumn)
+{
+    $nullReferencesCheck[] = <<<CODE
+
+                if (isset(\$values['$refColumn']) && !\$values['$refColumn']) {
+                    unset(\$values['$refColumn']);
+                }
+CODE;
+}
+
+$nullReferencesCheck = implode("\n", $nullReferencesCheck);
+
 return <<<CODE
 <?php
 
@@ -50,12 +64,14 @@ class {$this->_controllerNamePrefix}$tableDefinition[baseClassName]Controller ex
             if (\$form->isValid(\$this->_request->getPost())) {
                 \$values = \$form->getValues();
                     
-                \$table$tableDefinition[baseClassName] = new $tableDefinition[className]();
+                \$table$tableDefinition[baseClassName] = new $tableDefinition[className]();$nullReferencesCheck
                 \$table$tableDefinition[baseClassName]->insert(\$values);
                     
                 \$this->_helper->redirector('index');
                 exit;
             }
+        } else {
+            \$form->populate(\$this->_getAllParams());
         }
         
         \$this->view->form = \$form;
@@ -76,7 +92,7 @@ class {$this->_controllerNamePrefix}$tableDefinition[baseClassName]Controller ex
             
         if (\$this->_request->isPost()) {
             if (\$form->isValid(\$this->_request->getPost())) {
-                \$values = \$form->getValues();
+                \$values = \$form->getValues();$nullReferencesCheck
         
                 \$where = array('{$tableDefinition['primaryKey'][0]} = ?' => \$id);
         
