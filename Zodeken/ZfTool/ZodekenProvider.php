@@ -180,13 +180,17 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
 
     /**
      * The public method that would be exposed into ZF tool
+     * @param boolean $overwriteAll
+     * @param string $tableList
+     * @throws Zodeken_ZfTool_Exception
+     * @throws Exception
      */
-    public function generate($force = 0)
+    public function generate($overwriteAll = 0, $tableList = '')
     {
         $currentWorkingDirectory = getcwd();
         $shouldUpdateConfigFile = false;
 
-        $forceOverriding = $force ? true : false;
+        $overwriteAll = $overwriteAll ? true : false;
 
         // replace the slash just to print a beautiful message :D
         $configDir = str_replace(
@@ -264,7 +268,7 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         $asciiChar = 97;
         $allKeys = array();
 
-        if ($forceOverriding) {
+        if ($overwriteAll) {
             echo "\033[1;31mATTENTION! Zodeken will override all existing files!\033[0;37m";
         }
 
@@ -437,7 +441,7 @@ Which files do you want to generate?
         echo 'Configs have been written to application.ini', PHP_EOL;
         // end of modifying configs
 
-        $this->_analyzeTableDefinitions();
+        $this->_analyzeTableDefinitions($tableList);
 
         $moduleBaseDirectory = $currentWorkingDirectory . '/application';
 
@@ -468,7 +472,7 @@ Which files do you want to generate?
                 $fileName = str_replace('{TABLE_CAMEL_NAME}', $tableDefinition['baseClassName'], $fileName);
                 $fileName = str_replace('{TABLE_CONTROLLER_NAME}', $tableDefinition['controllerName'], $fileName);
 
-                $this->_createFile($fileName, $code, $forceOverriding ? true : $canOverride);
+                $this->_createFile($fileName, $code, $overwriteAll ? true : $canOverride);
             }
         }
     }
@@ -591,16 +595,24 @@ Which files do you want to generate?
      *
      * These configurations are used by other methods.
      */
-    protected function _analyzeTableDefinitions()
+    protected function _analyzeTableDefinitions($tableList = '')
     {
+        if (empty($tableList)) {
+            $tableList = array();
+            foreach ($this->_db->fetchAll("SHOW TABLES", array(), Zend_Db::FETCH_NUM) as $tableRow)
+            {
+                $tableList[] = $tableRow[0];
+            }
+        } else {
+            $tableList = explode(',', $tableList);
+        }
+        
         $tables = array();
 
         // get the list of tables
         echo "Analyzing tables\n";
-        foreach ($this->_db->fetchAll("SHOW TABLES", array(), Zend_Db::FETCH_NUM) as $tableRow)
+        foreach ($tableList as $tableName)
         {
-            $tableName = $tableRow[0];
-
             $primaryKey = array();
             $fields = array();
             $dependentTables = array();
