@@ -157,7 +157,9 @@ $headers
 $headers
     </tfoot>
     <tbody>
-<?php foreach (\$this->paginator as \$row): ?>
+<?php foreach (\$this->paginator as \$row):
+     /* @var \$row $tableDefinition[rowClassName] */
+?>
 $rowFields
 <?php endforeach; ?>
     </tbody>
