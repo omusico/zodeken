@@ -60,6 +60,12 @@ FILTER;
         echo \$linkedRow->$field[name], ' (unlinked)';
     }
 RENDER;
+        
+        if (!$field['is_required']) {
+            $renderedFieldData = "if (\$row->$field[name]) {
+            " . $renderedFieldData . "
+            }";
+        }
     }
     
     $headers[] = "<th<?php if ('$field[name]' == \$this->sortField) echo ' class=\"sort-field sort-', htmlspecialchars(\$this->param_so), '\"'; ?>>
