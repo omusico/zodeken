@@ -181,11 +181,11 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
     /**
      * The public method that would be exposed into ZF tool
      * @param boolean $force
-     * @param string $tableList
+     * @param string $includeTableList
      * @throws Zodeken_ZfTool_Exception
      * @throws Exception
      */
-    public function generate($force = 0, $tableList = '')
+    public function generate($force = 0, $includeTableList = '', $excludeTableList = '')
     {
         $currentWorkingDirectory = getcwd();
         $shouldUpdateConfigFile = false;
@@ -439,7 +439,7 @@ Which files do you want to generate?
         echo 'Configs have been written to application.ini', PHP_EOL;
         // end of modifying configs
 
-        $this->_analyzeTableDefinitions($tableList);
+        $this->_analyzeTableDefinitions($includeTableList);
 
         $moduleBaseDirectory = $currentWorkingDirectory . '/application';
 
@@ -448,13 +448,18 @@ Which files do you want to generate?
         }
         
         
-        if (!empty($tableList)) {
-            $tableList = explode(',', $tableList);
+        if (!empty($includeTableList)) {
+            $includeTableList = explode(',', $includeTableList);
+        }
+        
+        if (!empty($excludeTableList)) {
+            $excludeTableList = explode(',', $excludeTableList);
         }
 
         foreach ($this->_tables as $tableName => $tableDefinition)
         {
-            if (!empty($tableList) && !in_array($tableName, $tableList)) {
+            if (!empty($includeTableList) && !in_array($tableName, $includeTableList)
+                    || !empty($excludeTableList) && in_array($tableName, $excludeTableList)) {
                 continue;
             }
             
