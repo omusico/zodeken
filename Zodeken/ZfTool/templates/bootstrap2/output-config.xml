@@ -29,16 +29,16 @@
 
     <outputGroup name="dbtable">
         <output templateName="row-abstract.php" canOverride="1" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}/Row.php" />
+            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}RowAbstract.php" />
         <output templateName="row.php" canOverride="0" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Row.php" />
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}Row.php" />
         <output templateName="rowset-abstract.php"  canOverride="1" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}/Rowset.php" />
+            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}RowsetAbstract.php" />
         <output templateName="rowset.php"  canOverride="0" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Rowset.php" />
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}Rowset.php" />
         <output templateName="table-abstract.php"  canOverride="1" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}/DbTable.php" />
+            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}TableAbstract.php" />
         <output templateName="table.php"  canOverride="0" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/DbTable.php" />
+            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}Table.php" />
     </outputGroup>
 </zodeken>

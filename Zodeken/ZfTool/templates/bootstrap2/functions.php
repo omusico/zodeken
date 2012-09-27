@@ -11,32 +11,32 @@ function getCamelCase($string)
 
 function getDbTableClassName($tableName, $appNamespace)
 {
-    return $appNamespace . 'Model_' . getCamelCase($tableName) . '_DbTable';
+    return $appNamespace . 'Model_' . getCamelCase($tableName) . 'Table';
 }
 
 function getDbTableAbstractClassName($tableName, $appNamespace)
 {
-    return $appNamespace . 'Model_Abstract_' . getCamelCase($tableName) . '_DbTable';
+    return $appNamespace . 'Model_Abstract_' . getCamelCase($tableName) . 'TableAbstract';
 }
 
 function getRowClassName($tableName, $appNamespace)
 {
-    return $appNamespace . 'Model_' . getCamelCase($tableName) . '_Row';
+    return $appNamespace . 'Model_' . getCamelCase($tableName) . 'Row';
 }
 
 function getRowAbstractClassName($tableName, $appNamespace)
 {
-    return $appNamespace . 'Model_Abstract_' . getCamelCase($tableName) . '_Row';
+    return $appNamespace . 'Model_Abstract_' . getCamelCase($tableName) . 'RowAbstract';
 }
 
 function getRowsetClassName($tableName, $appNamespace)
 {
-    return $appNamespace . 'Model_' . getCamelCase($tableName) . '_Rowset';
+    return $appNamespace . 'Model_' . getCamelCase($tableName) . 'Rowset';
 }
 
 function getRowsetAbstractClassName($tableName, $appNamespace)
 {
-    return $appNamespace . 'Model_Abstract_' . getCamelCase($tableName) . '_Rowset';
+    return $appNamespace . 'Model_Abstract_' . getCamelCase($tableName) . 'RowsetAbstract';
 }
 
 function getMapperClassName($tableName, $appNamespace)
