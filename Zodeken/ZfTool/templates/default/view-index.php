@@ -87,8 +87,8 @@ RENDER;
 }
 
 $headers[] = '<th>Actions</th>';
-$rowFields[] = '<td align="center"><a href="<?php echo $this->url(array(' . $urlHelperModulePart . '\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'update\', \'id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>">Edit</a> 
-    - <a onclick="return confirm(\'Confirm deletion!\');" href="<?php echo $this->url(array(' . $urlHelperModulePart . '\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'delete\', \'del_id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>">Delete</a></td>';
+$rowFields[] = '<td align="center"><a href="<?php echo $this->url(array(' . $urlHelperModulePart . '\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'update\', \'id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>?dest=<?php echo $currentUrl; ?>">Edit</a> 
+    - <a onclick="return confirm(\'Confirm deletion!\');" href="<?php echo $this->url(array(' . $urlHelperModulePart . '\'controller\' => \'' . $tableDefinition['controllerName'] . '\', \'action\' => \'delete\', \'del_id\' => $row->' . $tableDefinition['primaryKey'][0] . '), null, true); ?>?dest=<?php echo $currentUrl; ?>">Delete</a></td>';
 
 $headers = '        <tr>
             ' . implode("\n            ", $headers) . '
@@ -109,6 +109,10 @@ if (!empty($linkedTablesCode)) {
 $searchableFields = var_export($searchableFields, true);
 
 return <<<CODE
+<?php
+\$this->headTitle('$tableDefinition[baseClassName] Management');
+\$currentUrl = urlencode(\$_SERVER['REQUEST_URI']);
+?>
 $linkedTablesCode
 <script type="text/javascript">
 function toggleCheckboxes(source)

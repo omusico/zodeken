@@ -79,6 +79,7 @@ class {$this->_controllerNamePrefix}$tableDefinition[baseClassName]Controller ex
     
     public function updateAction()
     {
+        \$dest = \$this->_getParam('dest', null);
         \$table$tableDefinition[baseClassName] = new $tableDefinition[className]();
         \$form = new $tableDefinition[formClassName]();
         \$id = (int) \$this->_getParam('id', 0);
@@ -97,8 +98,12 @@ class {$this->_controllerNamePrefix}$tableDefinition[baseClassName]Controller ex
                 \$where = array('{$tableDefinition['primaryKey'][0]} = ?' => \$id);
         
                 \$table$tableDefinition[baseClassName]->update(\$values, \$where);
-                    
-                \$this->_helper->redirector('index');
+
+                if (\$dest) {
+                    \$this->_redirect(\$dest);
+                } else {
+                    \$this->_helper->redirector('index');
+                }
                 exit;
             }
         } else {
@@ -108,10 +113,12 @@ class {$this->_controllerNamePrefix}$tableDefinition[baseClassName]Controller ex
         
         \$this->view->form = \$form;
         \$this->view->row = \$row;
+        \$this->view->dest = \$dest;
     }
     
     public function deleteAction()
     {
+        \$dest = \$this->_getParam('dest', null);
         \$ids = \$this->_getParam('del_id', array());
         
         if (!is_array(\$ids)) {
@@ -123,7 +130,11 @@ class {$this->_controllerNamePrefix}$tableDefinition[baseClassName]Controller ex
             \$table$tableDefinition[baseClassName]->deleteMultipleIds(\$ids);
         }
         
-        \$this->_helper->redirector('index');
+        if (\$dest) {
+            \$this->_redirect(\$dest);
+        } else {
+            \$this->_helper->redirector('index');
+        }
         exit;
     }
 }

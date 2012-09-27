@@ -15,7 +15,7 @@ return <<<CODE
    <h1>Update $tableDefinition[baseClassName]: <?php echo \$this->row->getZodekenAutoLabel(); ?></h1>
 </div>
 
-<form class="form-horizontal" method="post" action="<?php echo \$this->url(); ?>">
+<form class="form-horizontal" method="post" action="<?php echo \$_SERVER['REQUEST_URI']; ?>">
     <?php
     /* @var \$form Zend_Form */
     foreach (\$form->getElements() as \$element):
