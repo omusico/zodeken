@@ -68,6 +68,17 @@ foreach ($tableDefinition['fields'] as $field) {
                 $fieldConfigs[] = '->setAttrib("rows", "15")';
                 break;
             case 'tinyint':
+                if ('is_' === substr($field['name'], 0, 3)) {
+                    $fieldType = 'checkbox';
+                    $validators[] = 'new Zend_Validate_Int()';
+                    $fieldConfigs[] = '->setCheckedValue(1)';
+                    $fieldConfigs[] = '->setUncheckedValue(0)';
+                } else {
+                    $fieldType = 'text';
+                    $filters[] = 'new Zend_Filter_StringTrim()';
+                    $validators[] = 'new Zend_Validate_Int()';
+                }
+                break;
             case 'mediumint':
             case 'int':
             case 'year':
