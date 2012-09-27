@@ -7,7 +7,7 @@ foreach (array_keys($tableDefinition['referenceMap']) as $refColumn)
     $nullReferencesCheck[] = <<<CODE
 
                 if (isset(\$values['$refColumn']) && !\$values['$refColumn']) {
-                    unset(\$values['$refColumn']);
+                    \$values['$refColumn'] = new Zend_Db_Expr('NULL');
                 }
 CODE;
 }
