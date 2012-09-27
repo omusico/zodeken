@@ -19,7 +19,7 @@
                 outputPath="{APPLICATION_DIR}/forms/Edit{TABLE_CAMEL_NAME}.php" />
 
         <output templateName="form-latest.php"  canOverride="1" acceptMapTable="0"
-                outputPath="{APPLICATION_DIR}/forms/Edit{TABLE_CAMEL_NAME}/Latest.php" />
+                outputPath="{APPLICATION_DIR}/forms/Latest/Edit{TABLE_CAMEL_NAME}.php" />
     </outputGroup>
     
     <outputGroup name="mapper">
@@ -29,15 +29,15 @@
 
     <outputGroup name="dbtable">
         <output templateName="row-abstract.php" canOverride="1" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Row/Abstract.php" />
+            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}/Row.php" />
         <output templateName="row.php" canOverride="0" acceptMapTable="1"
             outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Row.php" />
         <output templateName="rowset-abstract.php"  canOverride="1" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Rowset/Abstract.php" />
+            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}/Rowset.php" />
         <output templateName="rowset.php"  canOverride="0" acceptMapTable="1"
             outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/Rowset.php" />
         <output templateName="table-abstract.php"  canOverride="1" acceptMapTable="1"
-            outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/DbTable/Abstract.php" />
+            outputPath="{APPLICATION_DIR}/models/Abstract/{TABLE_CAMEL_NAME}/DbTable.php" />
         <output templateName="table.php"  canOverride="0" acceptMapTable="1"
             outputPath="{APPLICATION_DIR}/models/{TABLE_CAMEL_NAME}/DbTable.php" />
     </outputGroup>

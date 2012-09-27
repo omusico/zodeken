@@ -156,6 +156,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
      */
     protected function _createFile($filePath, $code, $allowOverride = false)
     {
+        if (function_exists('createFile')) {
+            return createFile($filePath, $code, $allowOverride);
+        }
+        
         $baseDir = pathinfo($filePath, PATHINFO_DIRNAME);
         $relativePath = str_replace($this->_cwd . '/', '', $filePath);
 
@@ -181,11 +185,11 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
     /**
      * The public method that would be exposed into ZF tool
      * @param boolean $force
-     * @param string $includeTableList
+     * @param string $tableList
      * @throws Zodeken_ZfTool_Exception
      * @throws Exception
      */
-    public function generate($force = 0, $includeTableList = '', $excludeTableList = '')
+    public function generate($force = 0, $tableList = '', $excludeTableList = '')
     {
         $currentWorkingDirectory = getcwd();
         $shouldUpdateConfigFile = false;
@@ -288,6 +292,10 @@ class Zodeken_ZfTool_ZodekenProvider extends Zend_Tool_Framework_Provider_Abstra
         }
 
         $this->_outputTemplate = $template;
+        
+        if (file_exists($zodekenDir . "/templates/$template/functions.php")) {
+            require $zodekenDir . "/templates/$template/functions.php";
+        }
         
         // parse the config file
         $xdoc = new DOMDocument();
@@ -439,7 +447,7 @@ Which files do you want to generate?
         echo 'Configs have been written to application.ini', PHP_EOL;
         // end of modifying configs
 
-        $this->_analyzeTableDefinitions($includeTableList);
+        $this->_analyzeTableDefinitions($tableList);
 
         $moduleBaseDirectory = $currentWorkingDirectory . '/application';
 
@@ -448,8 +456,8 @@ Which files do you want to generate?
         }
         
         
-        if (!empty($includeTableList)) {
-            $includeTableList = explode(',', $includeTableList);
+        if (!empty($tableList)) {
+            $tableList = explode(',', $tableList);
         }
         
         if (!empty($excludeTableList)) {
@@ -458,7 +466,7 @@ Which files do you want to generate?
 
         foreach ($this->_tables as $tableName => $tableDefinition)
         {
-            if (!empty($includeTableList) && !in_array($tableName, $includeTableList)
+            if (!empty($tableList) && !in_array($tableName, $tableList)
                     || !empty($excludeTableList) && in_array($tableName, $excludeTableList)) {
                 continue;
             }
@@ -499,7 +507,20 @@ Which files do you want to generate?
      */
     protected function _getDbTableClassName($tableName)
     {
+        if (function_exists('getDbTableClassName')) {
+            return getDbTableClassName($tableName, $this->_appnamespace);
+        }
+        
         return $this->_appnamespace . 'Model_'
+                . $this->_getCamelCase($tableName) . '_DbTable';
+    }
+    protected function _getDbTableAbstractClassName($tableName)
+    {
+        if (function_exists('getDbTableAbstractClassName')) {
+            return getDbTableAbstractClassName($tableName, $this->_appnamespace);
+        }
+        
+        return $this->_appnamespace . 'Model_Abstract_'
                 . $this->_getCamelCase($tableName) . '_DbTable';
     }
 
@@ -513,6 +534,19 @@ Which files do you want to generate?
      */
     protected function _getRowClassName($tableName)
     {
+        if (function_exists('getRowClassName')) {
+            return getRowClassName($tableName, $this->_appnamespace);
+        }
+        
+        return $this->_appnamespace . 'Model_'
+                . $this->_getCamelCase($tableName) . '_Row';
+    }
+    protected function _getRowAbstractClassName($tableName)
+    {
+        if (function_exists('getRowAbstractClassName')) {
+            return getRowAbstractClassName($tableName, $this->_appnamespace);
+        }
+        
         return $this->_appnamespace . 'Model_'
                 . $this->_getCamelCase($tableName) . '_Row';
     }
@@ -527,6 +561,20 @@ Which files do you want to generate?
      */
     protected function _getRowsetClassName($tableName)
     {
+        if (function_exists('getRowsetClassName')) {
+            return getRowsetClassName($tableName, $this->_appnamespace);
+        }
+        
+        return $this->_appnamespace . 'Model_'
+                . $this->_getCamelCase($tableName) . '_Rowset';
+    }
+    
+    protected function _getRowsetAbstractClassName($tableName)
+    {
+        if (function_exists('getRowsetAbstractClassName')) {
+            return getRowsetAbstractClassName($tableName, $this->_appnamespace);
+        }
+        
         return $this->_appnamespace . 'Model_'
                 . $this->_getCamelCase($tableName) . '_Rowset';
     }
@@ -539,6 +587,10 @@ Which files do you want to generate?
      */
     protected function _getMapperClassName($tableName)
     {
+        if (function_exists('getMapperClassName')) {
+            return getMapperClassName($tableName, $this->_appnamespace);
+        }
+        
         return $this->_appnamespace . 'Model_' . $this->_getCamelCase($tableName) . 'Mapper';
     }
 
@@ -550,6 +602,10 @@ Which files do you want to generate?
      */
     protected function _getFormLatestClassName($tableName)
     {
+        if (function_exists('getFormLatestClassName')) {
+            return getFormLatestClassName($tableName, $this->_appnamespace);
+        }
+        
         return $this->_appnamespace . 'Form_Edit'
                 . $this->_getCamelCase($tableName) . '_Latest';
     }
@@ -562,6 +618,10 @@ Which files do you want to generate?
      */
     protected function _getFormClassName($tableName)
     {
+        if (function_exists('getFormClassName')) {
+            return getFormClassName($tableName, $this->_appnamespace);
+        }
+        
         return $this->_appnamespace . 'Form_Edit' . $this->_getCamelCase($tableName);
     }
 
@@ -596,6 +656,10 @@ Which files do you want to generate?
      */
     protected function _getLabel($string)
     {
+        if (function_exists('getLabel')) {
+            return getLabel($string);
+        }
+        
         $string = str_replace('_', ' ', $string);
         $string = ucwords($string);
 
@@ -698,13 +762,13 @@ Which files do you want to generate?
             $tables[$tableName] = array(
                 'name' => $tableName,
                 'className' => $this->_getDbTableClassName($tableName),
-                'classNameAbstract' => $this->_getDbTableClassName($tableName) . '_Abstract',
+                'classNameAbstract' => $this->_getDbTableAbstractClassName($tableName),
                 'baseClassName' => $this->_getCamelCase($tableName),
                 'controllerName' => str_replace('_', '-', $tableName),
                 'rowClassName' => $this->_getRowClassName($tableName),
-                'rowClassNameAbstract' => $this->_getRowClassName($tableName) . '_Abstract',
+                'rowClassNameAbstract' => $this->_getRowAbstractClassName($tableName),
                 'rowsetClassName' => $this->_getRowsetClassName($tableName),
-                'rowsetClassNameAbstract' => $this->_getRowsetClassName($tableName) . '_Abstract',
+                'rowsetClassNameAbstract' => $this->_getRowsetAbstractClassName($tableName),
                 'mapperClassName' => $this->_getMapperClassName($tableName),
                 'formClassName' => $this->_getFormClassName($tableName),
                 'formClassNameLatest' => $this->_getFormLatestClassName($tableName),
@@ -756,6 +820,10 @@ Which files do you want to generate?
      */
     protected function _preserveIniConfigs($iniFilename)
     {
+        if (file_exists('preserveIniConfigs')) {
+            return preserveIniConfigs($iniFilename);
+        }
+        
         $ini = file_get_contents($iniFilename);
 
         //$ini = preg_replace('#"([A-Z_]{2,})#s', '\1 "', $ini);
