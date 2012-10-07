@@ -802,13 +802,15 @@ Which files do you want to generate?
                 // we consider its refereced table as a table that has a
                 // many-to-many relationship with another table
                 if (in_array($column, $table['primaryKey'])) {
-                    $inRelationships[] = array($reference['table'], $column);
+                    $inRelationships[] = array($reference['table'], $reference['columns']);
                 }
             }
 
-            $tables[$inRelationships[0][0]]['hasMany'][$table['name']] = array($inRelationships[1][0], $inRelationships[1][1]);
-            $tables[$inRelationships[1][0]]['hasMany'][$table['name']] = array($inRelationships[0][0], $inRelationships[0][1]);
+            $tables[$inRelationships[0][0]]['hasMany'][$table['name']] = array($inRelationships[1][0], $inRelationships[0][1]);
+            $tables[$inRelationships[1][0]]['hasMany'][$table['name']] = array($inRelationships[0][0], $inRelationships[1][1]);
         }
+        
+        print_r($tables['post']);
 
         $this->_tables = $tables;
     }
