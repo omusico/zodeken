@@ -73,16 +73,15 @@ foreach ($tableDefinition['referenceMap'] as $column => $reference) {
 FUNCTION;
 }
 
-foreach ($tableDefinition['hasMany'] as $hasManyTable) {
+foreach ($tableDefinition['hasMany'] as $mapTableName => $hasManyTable) {
     $hasManyTableName = $hasManyTable[0];
     $hasManyTableColumn = $hasManyTable[1];
-    $mapTableName = $hasManyTable[2];
 
     $hasManyDefinition = $this->_tables[$hasManyTableName];
     $mapDefinition = $this->_tables[$mapTableName];
 
     $hasManyTableName = $this->_getCamelCase($hasManyTableName);
-    $functionName = "get{$hasManyTableName}Rowset";
+    $functionName = "get{$hasManyTableName}RowsetBy" . $this->_getCamelCase($mapTableName);
 
     if (isset($functionNames[$functionName])) {
         continue;

@@ -806,8 +806,8 @@ Which files do you want to generate?
                 }
             }
 
-            $tables[$inRelationships[0][0]]['hasMany'][$inRelationships[0][1]] = array($inRelationships[1][0], $inRelationships[1][1], $table['name']);
-            $tables[$inRelationships[1][0]]['hasMany'][$inRelationships[1][1]] = array($inRelationships[0][0], $inRelationships[0][1], $table['name']);
+            $tables[$inRelationships[0][0]]['hasMany'][$table['name']] = array($inRelationships[1][0], $inRelationships[1][1]);
+            $tables[$inRelationships[1][0]]['hasMany'][$table['name']] = array($inRelationships[0][0], $inRelationships[0][1]);
         }
 
         $this->_tables = $tables;
