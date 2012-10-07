@@ -809,8 +809,6 @@ Which files do you want to generate?
             $tables[$inRelationships[0][0]]['hasMany'][$table['name']] = array($inRelationships[1][0], $inRelationships[0][1]);
             $tables[$inRelationships[1][0]]['hasMany'][$table['name']] = array($inRelationships[0][0], $inRelationships[1][1]);
         }
-        
-        print_r($tables['post']);
 
         $this->_tables = $tables;
     }
